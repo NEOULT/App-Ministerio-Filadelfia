@@ -70,7 +70,7 @@ export default function App() {
           ¡Únete a la Juventud de la Iglesia!
         </h1>
         <p className="text-center text-[14px] lg:text-2xl md:text-sm  ">
-          Inscríbete hoy, conecta con tu fe y haz nuevos amigos.
+          ¡Inscríbete hoy y ven a vivir momentos increíbles: fe, risas y nuevos amigos te esperan!
         </p>
       </div>
       <Modal onContinue={handleContinue} />

@@ -16,8 +16,10 @@ interface DatePickerProps {
   selected?: Date;
   onSelect: (date: Date | undefined) => void;
   placeholder?: string;
+  // optional node to render at the right side of the trigger (e.g. age)
+  rightSlot?: React.ReactNode;
 }
-export function DatePicker({ selected, onSelect, placeholder = "Selecciona una fecha" }: DatePickerProps) {
+export function DatePicker({ selected, onSelect, placeholder = "Selecciona una fecha", rightSlot }: DatePickerProps) {
   const currentYear = new Date().getFullYear();
   const fromYear = 1990;
   const toYear = currentYear;
@@ -39,10 +41,13 @@ export function DatePicker({ selected, onSelect, placeholder = "Selecciona una f
         <Button
           variant="outline"
           data-empty={!selected}
-          className="data-[empty=true]:text-muted-foreground w-[280px] justify-start text-left font-normal"
+          className="data-[empty=true]:text-muted-foreground w-full justify-start text-left font-normal flex items-center"
         >
           <CalendarIcon />
-          {selected ? format(selected, "PPP", { locale: es }) : <span>{placeholder}</span>}
+          <span style={{ marginLeft: 12, display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
+            <span style={{ flex: '0 0 auto' }}>{selected ? format(selected, 'dd/MM/yyyy', { locale: es }) : <span>{placeholder}</span>}</span>
+            {rightSlot && <span style={{ marginLeft: 'auto', color: '#374151', fontWeight: 600 }}>{rightSlot}</span>}
+          </span>
         </Button>
       </PopoverTrigger>
       <PopoverContent 

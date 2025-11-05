@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getActividades } from '@/services/Api'
 import type { Actividad } from '@/services/Api'
+import { formatDateStringForDisplay } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { RefreshCw } from 'lucide-react'
 
@@ -184,7 +185,7 @@ export default function ClasesList({ reloadSignal = 0 }: ClasesListProps) {
                       padding: '12px 16px',
                       color: '#6b7280'
                     }}>
-                      {clase.fecha ? new Date(clase.fecha).toLocaleDateString('es-ES', {
+                      {clase.fecha ? formatDateStringForDisplay(clase.fecha, 'es-ES', {
                         year: 'numeric',
                         month: 'short',
                         day: 'numeric'

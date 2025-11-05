@@ -75,6 +75,12 @@ interface ApiError extends Error {
   payload?: unknown;
 }
 
+interface ApiEnvelope<T = unknown> {
+  status?: string;
+  data?: T;
+  [key: string]: unknown;
+}
+
 const API_BASE = "https://backend01-proyecto-jovenes-phru.vercel.app";
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -110,11 +116,17 @@ export function getPersonas(
   return request<PaginatedResponse<Persona>>(`/personas${qp ? `?${qp}` : ""}`);
 }
 
-export function createPersona(payload: CreatePersonaPayload): Promise<Persona> {
-  return request<Persona>("/personas", {
+export async function createPersona(payload: CreatePersonaPayload): Promise<Persona> {
+  // The backend returns an envelope { status, data } — unwrap data for callers
+  const res = await request<ApiEnvelope<Persona>>("/personas", {
     method: "POST",
     body: JSON.stringify(payload),
   });
+  if (res && typeof res === "object" && "data" in res && res.data) {
+    return res.data as Persona;
+  }
+  // Fallback: if backend returned the persona directly
+  return (res as unknown) as Persona;
 }
 
 export function getActividades(): Promise<Actividad[]> {
@@ -130,14 +142,21 @@ export function createActividad(
   });
 }
 
-export function getActividadesSemana(
+export async function getActividadesSemana(
   params: GetActividadesSemanaParams = {}
 ): Promise<Actividad[]> {
   const { fecha } = params;
   const searchParams = new URLSearchParams();
   if (fecha) searchParams.set("fecha", fecha);
   const qp = searchParams.toString();
-  return request<Actividad[]>(`/actividades/semana${qp ? `?${qp}` : ""}`);
+  // backend returns envelope { status, from, to, count, data }
+  const res = await request<ApiEnvelope<Actividad[]>>(`/actividades/semana${qp ? `?${qp}` : ""}`);
+  if (res && typeof res === "object" && Array.isArray(res.data)) {
+    return res.data as Actividad[];
+  }
+  // fallback: if API already returned an array
+  if (Array.isArray(res)) return res as Actividad[];
+  return [];
 }
 
 export function asistirActividad(

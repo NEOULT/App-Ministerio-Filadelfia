@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/Input/Input";
 import { DatePicker } from "@/components/DatePicker/DatePicker";
-import { createPersona } from "@/services/Api";
+import { createPersona, getActividadesSemana, asistirActividad, getPersonas, type Persona } from "@/services/Api";
 import { SuccessDialog } from "@/components/SuccessDialog/SuccessDialog";
 
 interface FormProps {
@@ -59,6 +59,17 @@ export const Form = ({ onBack }: FormProps) => {
     setFormData({ ...formData, cedula: digits });
   };
 
+  const calculateAge = (d?: Date | undefined) => {
+    if (!d) return null;
+    const today = new Date();
+    let age = today.getFullYear() - d.getFullYear();
+    const m = today.getMonth() - d.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < d.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     // Validación: nombre, apellido y fecha de nacimiento son obligatorios
@@ -84,8 +95,8 @@ export const Form = ({ onBack }: FormProps) => {
       ministerio: formData.ministerio || undefined,
       nivel_academico: formData.nivel_academico || undefined,
       ocupacion: formData.ocupacion || undefined,
-  // send bautizado explicitly (backend may require boolean)
-  bautizado: formData.bautizado,
+      // send bautizado explicitly (backend may require boolean)
+      bautizado: formData.bautizado,
       genero: formData.genero || undefined,
     };
 
@@ -93,7 +104,11 @@ export const Form = ({ onBack }: FormProps) => {
       // clear previous field errors
       setFieldErrors({});
   setIsSubmitting(true);
-      const created: unknown = await createPersona(payload);
+  const created: unknown = await createPersona(payload);
+  // Dev logs: payload sent and response received from createPersona
+  // Useful to debug whether backend returns _id and to inspect server errors
+  // (remove or guard these logs in production)
+  console.log("createPersona payload:", payload, "response:", created);
       // extract name from response if present (type-safe)
       let nameToShow = formData.nombre || "";
       if (created && typeof created === "object") {
@@ -103,11 +118,67 @@ export const Form = ({ onBack }: FormProps) => {
       }
       setSuccessName(nameToShow);
       // Build a user-facing success message. Only promise follow-up messages if we have contact info.
-      const base = "¡Gracias por registrarte en el Grupo de Jóvenes con Propósito!";
+      let base = "¡Gracias por registrarte en el Grupo de Jóvenes con Propósito!";
       const contactProvided = Boolean(formData.correo || formData.telefono);
       const followup = contactProvided
         ? " Pronto recibirás información sobre las actividades de los Jóvenes."
         : "";
+
+      // Intentar marcar asistencia automáticamente para la(s) actividad(es) del día
+      try {
+        // Build local date YYYY-MM-DD to avoid timezone shifts (toISOString can shift the day)
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, "0");
+        const dd = String(today.getDate()).padStart(2, "0");
+        const fechaHoy = `${yyyy}-${mm}-${dd}`;
+  // Dev log: fecha usada para consultar actividades
+  console.log("fechaHoy (local):", fechaHoy);
+        const actividades = await getActividadesSemana({ fecha: fechaHoy });
+  // Dev log: actividades recibidas
+  console.log("actividades for fechaHoy:", actividades);
+        if (Array.isArray(actividades) && actividades.length > 0) {
+          const actividad = actividades[0];
+          // created should contain the persona id returned by createPersona
+          // Prefer the _id from the create response; if backend didn't return it, try to lookup by cédula
+          let personaId = (created as Persona)?._id;
+          if (!personaId) {
+            try {
+              const ced = formData.cedula;
+              if (ced) {
+                const found = await getPersonas({ cedula: ced });
+                // Dev log: resultado de buscar persona por cédula
+                console.log("getPersonas lookup result for cedula", ced, found);
+                if (found && Array.isArray(found.data) && found.data.length > 0) {
+                  personaId = found.data[0]._id;
+                }
+              }
+            } catch (lookupErr) {
+              console.error('No se pudo buscar la persona por cédula tras crearla:', lookupErr);
+            }
+          }
+
+          // Dev log: personaId que usaremos para registrar asistencia (si existe)
+          console.log("personaId resolved:", personaId);
+
+          if (personaId) {
+            try {
+              // Dev log: antes de la llamada a asistirActividad
+              console.log("attempting asistirActividad with actividadId:", actividad._id, "personaId:", personaId);
+              await asistirActividad(actividad._id, personaId);
+              // append joyful attendance confirmation
+              base = `${base} \n
+Se ha registrado tu asistencia para el día de hoy 🎉`;
+            } catch (attErr) {
+              console.error('No se pudo registrar la asistencia automaticamente:', attErr);
+              // do not block success; optionally notify user later
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Error comprobando actividades del dia:', e);
+      }
+
       setSuccessMessage(`${base}${followup}`);
       setShowSuccess(true);
     } catch (err: unknown) {
@@ -222,6 +293,7 @@ export const Form = ({ onBack }: FormProps) => {
                     return copy
                   })
                 }}
+                rightSlot={formData.fechaNacimiento ? `Edad : ${calculateAge(formData.fechaNacimiento)}` : undefined}
               />
               {fieldErrors.fechaNacimiento && (
                 <small style={{ color: 'red', fontSize: '0.875rem' }}>{fieldErrors.fechaNacimiento}</small>

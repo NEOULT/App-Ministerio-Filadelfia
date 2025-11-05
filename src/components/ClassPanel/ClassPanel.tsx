@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getActividades, createActividad, type Actividad, type CreateActividadPayload } from '../../services/Api'
+import { formatDateStringForDisplay } from '../../lib/utils'
 import { Input } from '../Input/Input'
 import { Button } from '../ui/button'
 import { Calendar } from '../ui/calendar'
@@ -350,11 +351,11 @@ export default function ClasesPanel() {
                         padding: '14px 16px',
                         color: '#6b7280'
                       }}>
-                        {clase.fecha ? new Date(clase.fecha).toLocaleDateString('es-ES', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric'
-                        }) : '-'}
+                        {clase.fecha ? formatDateStringForDisplay(clase.fecha, 'es-ES', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric'
+                          }) : '-'}
                       </td>
                       <td style={{
                         padding: '14px 16px',
