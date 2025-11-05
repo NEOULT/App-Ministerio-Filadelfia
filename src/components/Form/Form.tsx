@@ -28,6 +28,7 @@ export const Form = ({ onBack }: FormProps) => {
   const [successName, setSuccessName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<string, string>>>({});
 
   // --- Phone and Cedula helpers (store digits; format for display) ---
   const formatPhoneDisplay = (digits: string) => {
@@ -60,11 +61,14 @@ export const Form = ({ onBack }: FormProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Validar sólo los campos obligatorios: nombre, apellido, fecha de nacimiento
-    if (!formData.nombre || !formData.apellido || !formData.fechaNacimiento) {
-      alert("Por favor completa Nombre, Apellido y Fecha de Nacimiento.");
-      return;
+    // Validación: nombre, apellido y fecha de nacimiento son obligatorios
+    const errs: Partial<Record<string, string>> = {}
+    if (!formData.nombre || !formData.nombre.trim()) errs.nombre = 'El nombre es requerido.'
+    if (!formData.apellido || !formData.apellido.trim()) errs.apellido = 'El apellido es requerido.'
+    if (!formData.fechaNacimiento) errs.fechaNacimiento = '   La fecha de nacimiento es requerida.'
+    if (Object.keys(errs).length) {
+      setFieldErrors((prev) => ({ ...prev, ...errs }))
+      return
     }
 
     // Preparar payload en snake_case para el backend
@@ -86,6 +90,8 @@ export const Form = ({ onBack }: FormProps) => {
     };
 
     try {
+      // clear previous field errors
+      setFieldErrors({});
   setIsSubmitting(true);
       const created: unknown = await createPersona(payload);
       // extract name from response if present (type-safe)
@@ -106,8 +112,20 @@ export const Form = ({ onBack }: FormProps) => {
       setShowSuccess(true);
     } catch (err: unknown) {
       console.error("Error creando persona:", err);
-      const message = err instanceof Error ? err.message : String(err);
-      alert(message || "Error al crear la persona. Intenta de nuevo.");
+      // If the API returned a structured payload with duplicate key info, map it to fieldErrors
+      type ApiErrorPayload = { payload?: { code?: string; message?: string; errors?: Array<{ field: string; value?: unknown; message?: string }> } };
+      const maybeErr = err as unknown as ApiErrorPayload;
+      const payload = maybeErr?.payload;
+      if (payload && payload.code === "DUPLICATE_KEY" && Array.isArray(payload.errors)) {
+        const newFieldErrors: Partial<Record<string, string>> = {};
+        for (const e of payload.errors) {
+          // backend field names: 'cedula' or 'email'
+          if (e.field === 'cedula') newFieldErrors.cedula = e.message || 'La cédula ya está registrada.';
+          if (e.field === 'email') newFieldErrors.correo = e.message || 'El correo ya está registrado.';
+        }
+        setFieldErrors((prev) => ({ ...prev, ...newFieldErrors }));
+        // also show a general message from payload if present
+      } 
     } finally {
       setIsSubmitting(false);
     }
@@ -183,6 +201,9 @@ export const Form = ({ onBack }: FormProps) => {
             placeholder="V-12345678"
             // opcional
           />
+          {fieldErrors.cedula && (
+            <small style={{ color: 'red', fontSize: '0.875rem' }}>{fieldErrors.cedula}</small>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
@@ -192,10 +213,19 @@ export const Form = ({ onBack }: FormProps) => {
               </label>
               <DatePicker
                 selected={formData.fechaNacimiento}
-                onSelect={(date) =>
+                onSelect={(date) => {
                   setFormData({ ...formData, fechaNacimiento: date })
-                }
+                  // clear fechaNacimiento error when user picks a date
+                  setFieldErrors((prev) => {
+                    const copy = { ...prev }
+                    delete copy.fechaNacimiento
+                    return copy
+                  })
+                }}
               />
+              {fieldErrors.fechaNacimiento && (
+                <small style={{ color: 'red', fontSize: '0.875rem' }}>{fieldErrors.fechaNacimiento}</small>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: '#374151' }}>
@@ -249,6 +279,9 @@ export const Form = ({ onBack }: FormProps) => {
             placeholder="tu@correo.com"
             // opcional
           />
+          {fieldErrors.correo && (
+            <small style={{ color: 'red', fontSize: '0.875rem' }}>{fieldErrors.correo}</small>
+          )}
 
           {/* Bautizado moved to the end of the form */}
           <Input

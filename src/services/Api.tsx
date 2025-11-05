@@ -13,7 +13,7 @@ export interface Persona {
 
 export interface Actividad {
   _id: string;
-  nombre: string;
+  titulo: string;
   descripcion?: string;
   fecha: string;
   asistentes?: string[];
@@ -54,9 +54,11 @@ export interface CreatePersonaPayload {
 }
 
 export interface CreateActividadPayload {
-  nombre: string;
+  titulo: string;
   descripcion?: string;
   fecha: string;
+  asistentes?: string[];
+  ponentes?: string[];
 }
 
 export interface GetActividadesSemanaParams {

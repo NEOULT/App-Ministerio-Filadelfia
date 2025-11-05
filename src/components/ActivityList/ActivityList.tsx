@@ -138,7 +138,7 @@ export default function ActividadesList() {
                   color: '#1f2937',
                   flex: 1
                 }}>
-                  {actividad.nombre || 'Sin nombre'}
+                  {actividad.titulo || 'Sin título'}
                 </h3>
                 {actividad.fecha && (
                   <div style={{
