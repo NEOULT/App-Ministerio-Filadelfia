@@ -11,14 +11,30 @@ import { Input } from "@/components/Input/Input";
 import { SuccessDialog } from "@/components/SuccessDialog/SuccessDialog";
 import { getPersonas, getActividadesSemana, asistirActividad, type Persona } from '@/services/Api'
 
-export const AsistenceModal = ({ onRegisterRedirect }: { onRegisterRedirect?: (initial: Record<string, string>) => void }) => {
+interface AsistenceModalProps {
+  onRegisterRedirect?: (initial: Record<string, string>) => void;
+  actividadId?: string;
+}
+
+export const AsistenceModal = ({ onRegisterRedirect, actividadId }: AsistenceModalProps) => {
   const [cedula, setCedula] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const [message, setMessage] = useState<string | null>(null)
-  const [notRegistered, setNotRegistered] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [foundPerson, setFoundPerson] = useState<Persona | null>(null)
+  const [message, setMessage] = useState<string | null>(null);
+  const [notRegistered, setNotRegistered] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [foundPerson, setFoundPerson] = useState<Persona | null>(null);
+
+  const extractAsistirResult = (resp: any) => {
+    if (!resp) return { registered: undefined as boolean | undefined, message: undefined as string | undefined };
+    if (typeof resp.registered === 'boolean' || typeof resp.message === 'string') {
+      return { registered: resp.registered as boolean | undefined, message: resp.message as string | undefined };
+    }
+    if (resp.data && (typeof resp.data.registered === 'boolean' || typeof resp.data.message === 'string')) {
+      return { registered: resp.data.registered as boolean | undefined, message: resp.data.message as string | undefined };
+    }
+    return { registered: undefined as boolean | undefined, message: undefined as string | undefined };
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,8 +51,25 @@ export const AsistenceModal = ({ onRegisterRedirect }: { onRegisterRedirect?: (i
       if (persons.length > 0) {
         // show only the first matching record and wait for user confirmation to mark attendance
         const persona = persons[0] as Persona
-        setFoundPerson(persona)
-        setMessage(null)
+        // if actividadId prop provided, register immediately against that activity
+        if (actividadId) {
+          try {
+            const resp = await asistirActividad(actividadId, persona._id)
+            const { registered, message: backendMsg } = extractAsistirResult(resp)
+            if (registered === false) {
+              setMessage(backendMsg || `La persona ya estaba registrada en esta clase.`)
+            } else {
+              setMessage(backendMsg || `Asistencia registrada para ${persona.nombreCompleto ?? persona._id}`)
+              setShowSuccess(true)
+            }
+          } catch (err) {
+            console.error('Error registrando asistencia directa:', err)
+            setMessage('No se pudo registrar la asistencia automáticamente.')
+          }
+        } else {
+          setFoundPerson(persona)
+          setMessage(null)
+        }
       } else {
         // not registered: prepare redirect to form with prefill
         setNotRegistered(true)
@@ -131,7 +164,7 @@ export const AsistenceModal = ({ onRegisterRedirect }: { onRegisterRedirect?: (i
 
           <form onSubmit={handleSubmit} className="space-y-6 mt-4">
             <Input
-              label="Cédula de Identidad o Nombre Completo"
+              label="Cédula de Identidad o"
               type="text"
               value={cedula}
               onChange={(e) => setCedula(e.target.value)}

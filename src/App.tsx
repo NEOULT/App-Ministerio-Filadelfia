@@ -6,12 +6,14 @@ import { Modal } from "./components/Modal/Modal";
 import { Form } from "./components/Form/Form";
 import { AsistenceModal } from "./components/Modal/AsistenceModal";
 import Admin from "./Pages/Admin";
+import { getActividadesSemana, type Actividad } from "./services/Api";
 
 export default function App() {
   const { width, height } = useWindowSize();
   const [route, setRoute] = useState(window.location.hash || '#/');
   const [currentView, setCurrentView] = useState<'home' | 'form'>('home');
   const [formInitialData, setFormInitialData] = useState<Record<string, string> | undefined>(undefined)
+  const [actividadActual, setActividadActual] = useState<Actividad | null>(null);
   
   // Secret admin route: type or share this hash to access admin
   const SECRET_ADMIN_HASH = '#/__sigma-astral-portal__b2f9a7-91a4';
@@ -20,6 +22,23 @@ export default function App() {
     const onHashChange = () => setRoute(window.location.hash || '#/');
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
+  useEffect(() => {
+    // Obtener la actividad del día actual
+    const cargarActividadActual = async () => {
+      try {
+        const hoy = new Date().toISOString().split('T')[0];
+        const actividades = await getActividadesSemana({ fecha: hoy });
+        if (actividades.length > 0) {
+          setActividadActual(actividades[0]);
+        }
+      } catch (error) {
+        console.error("Error al cargar actividad actual:", error);
+      }
+    };
+
+    cargarActividadActual();
   }, []);
 
   const isAdmin = route.startsWith(SECRET_ADMIN_HASH);
@@ -83,8 +102,8 @@ export default function App() {
           ¡Inscríbete hoy y ven a vivir momentos increíbles: fe, risas y nuevos amigos te esperan!
         </p>
       </div>
-  <Modal onContinue={handleContinue} />
-  {isSunday && <AsistenceModal onRegisterRedirect={handleRegisterRedirect} />}
+      <Modal onContinue={handleContinue} />
+      {isSunday && actividadActual && <AsistenceModal onRegisterRedirect={handleRegisterRedirect} actividadId={actividadActual?._id || ''} />}
     </div>
   );
 }
