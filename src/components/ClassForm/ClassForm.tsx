@@ -127,7 +127,7 @@ export default function ClaseForm({ onCreated }: ClaseFormProps) {
       </div>
 
       <div style={{ textAlign: 'right' }}>
-        <Button type="submit" disabled={saving} variant="primary">
+        <Button type="submit" disabled={saving} variant="outline">
           {saving ? 'Creando...' : 'Crear Clase'}
         </Button>
       </div>
