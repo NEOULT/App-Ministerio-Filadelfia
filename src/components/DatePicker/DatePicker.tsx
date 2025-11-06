@@ -18,24 +18,45 @@ interface DatePickerProps {
   placeholder?: string;
   rightSlot?: React.ReactNode;
 }
+
 export function DatePicker({ selected, onSelect, placeholder = "Selecciona una fecha", rightSlot }: DatePickerProps) {
   const currentYear = new Date().getFullYear();
   const fromYear = 1990;
   const toYear = currentYear;
-  // react-day-picker renamed fromMonth/toMonth -> startMonth/endMonth
   const startMonth = new Date(fromYear, 0);
   const endMonth = new Date(toYear, 11);
 
   const initialMonth = selected || startMonth;
   const [viewMonth, setViewMonth] = React.useState<Date>(initialMonth);
+  const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
+  const [isMonthPopoverOpen, setIsMonthPopoverOpen] = React.useState(false);
+  const [isYearPopoverOpen, setIsYearPopoverOpen] = React.useState(false);
 
   React.useEffect(() => {
-    // keep viewMonth in sync when selected changes externally
     if (selected) setViewMonth(selected);
   }, [selected]);
 
+  const handleMonthSelect = (monthIndex: number) => {
+    setViewMonth(new Date(viewMonth.getFullYear(), monthIndex, 1));
+    setIsMonthPopoverOpen(false);
+  };
+
+  const handleYearSelect = (year: number) => {
+    setViewMonth(new Date(year, viewMonth.getMonth(), 1));
+    setIsYearPopoverOpen(false);
+  };
+
+  const handleDateSelect = (date: Date | undefined) => {
+    onSelect(date);
+    setIsPopoverOpen(false);
+  };
+
+  const handleNavigation = (years: number) => {
+    setViewMonth(new Date(viewMonth.getFullYear() + years, viewMonth.getMonth(), 1));
+  };
+
   return (
-    <Popover>
+    <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -55,52 +76,65 @@ export function DatePicker({ selected, onSelect, placeholder = "Selecciona una f
       </PopoverTrigger>
       <PopoverContent 
         className="w-auto p-0" 
-        align="start"
+        align="center"
         side="bottom"
         sideOffset={4}
-        avoidCollisions={false}
+        avoidCollisions={true}
         style={{ 
           backgroundColor: '#ffffff',
           border: '1px solid #e5e7eb',
           fontSize: '0.875rem',
-          // allow the custom month/year popovers to overflow the popover container
           overflow: 'visible',
-          zIndex: 50
+          zIndex: 50,
+          maxWidth: 'calc(100vw - 32px)',
+          // Centrado mejorado
+          position: 'fixed',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          maxHeight: '90vh',
+          overflowY: 'auto',
+          // Asegurar que esté por encima de todo
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
         }}
       >
-  <div style={{ position: 'relative' }}>
-          {/* overlay header positioned where the calendar caption normally is */}
-          <div style={{ position: 'absolute', left: 0, right: 0, top: 20, display: 'flex', gap: 24, alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 50 }}>
-            <div style={{ pointerEvents: 'auto' }}>
-              <Popover>
+        <div className="relative">
+          {/* Header con mes y año */}
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-6 items-center justify-center pt-4 pb-2 px-4 pointer-events-none z-50">
+            {/* Selector de Mes */}
+            <div className="pointer-events-auto w-full sm:w-auto">
+              <Popover open={isMonthPopoverOpen} onOpenChange={setIsMonthPopoverOpen}>
                 <PopoverTrigger asChild>
-                  <button type="button" style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: 700 }}>{viewMonth.toLocaleString('es-ES', { month: 'long' })}</button>
+                  <button 
+                    type="button" 
+                    className="w-full sm:w-auto px-4 py-3 text-base font-semibold text-center bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors touch-manipulation"
+                  >
+                    {viewMonth.toLocaleString('es-ES', { month: 'long' })}
+                  </button>
                 </PopoverTrigger>
                 <PopoverContent 
                   side="bottom" 
-                  align="start" 
-                  style={{ 
-                    background: '#fff', 
-                    border: '1px solid #e5e7eb', 
-                    padding: 8, 
-                    borderRadius: 6, 
-                    zIndex: 60,
-                    maxWidth: '90vw'
+                  align="center"
+                  className="w-80 max-w-[90vw] p-3 bg-white border border-gray-200 rounded-lg shadow-lg z-60"
+                  style={{
+                    position: 'fixed',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    maxHeight: '80vh',
+                    overflowY: 'auto'
                   }}
                 >
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+                  <div className="grid grid-cols-3 gap-2">
                     {Array.from({ length: 12 }).map((_, i) => (
                       <button 
                         key={i} 
-                        onClick={() => setViewMonth(new Date(viewMonth.getFullYear(), i, 1))} 
-                        style={{ 
-                          padding: '6px 8px', 
-                          borderRadius: 6, 
-                          border: i === viewMonth.getMonth() ? '1px solid #2768F5' : '1px solid transparent', 
-                          background: i === viewMonth.getMonth() ? '#eef2ff' : 'transparent', 
-                          cursor: 'pointer',
-                          fontSize: '0.75rem'
-                        }}
+                        onClick={() => handleMonthSelect(i)} 
+                        className={`p-3 rounded-lg border text-sm font-medium transition-colors touch-manipulation ${
+                          i === viewMonth.getMonth() 
+                            ? 'border-blue-600 bg-blue-50 text-blue-700' 
+                            : 'border-transparent bg-gray-50 hover:bg-gray-100 text-gray-700'
+                        }`}
                       >
                         {new Date(0, i).toLocaleString('es-ES', { month: 'short' })}
                       </button>
@@ -110,57 +144,61 @@ export function DatePicker({ selected, onSelect, placeholder = "Selecciona una f
               </Popover>
             </div>
 
-            <div style={{ pointerEvents: 'auto' }}>
-              <Popover>
+            {/* Selector de Año */}
+            <div className="pointer-events-auto w-full sm:w-auto">
+              <Popover open={isYearPopoverOpen} onOpenChange={setIsYearPopoverOpen}>
                 <PopoverTrigger asChild>
-                  <button type="button" style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: 700 }}>{viewMonth.getFullYear()}</button>
+                  <button 
+                    type="button" 
+                    className="w-full sm:w-auto px-4 py-3 text-base font-semibold text-center bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors touch-manipulation"
+                  >
+                    {viewMonth.getFullYear()}
+                  </button>
                 </PopoverTrigger>
                 <PopoverContent 
                   side="bottom" 
-                  align="center" 
-                  style={{ 
-                    background: '#fff', 
-                    border: '1px solid #e5e7eb', 
-                    padding: 8, 
-                    borderRadius: 6, 
-                    zIndex: 60,
-                    maxWidth: '90vw'
+                  align="center"
+                  className="w-80 max-w-[90vw] p-3 bg-white border border-gray-200 rounded-lg shadow-lg z-60"
+                  style={{
+                    position: 'fixed',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    maxHeight: '80vh',
+                    overflowY: 'auto'
                   }}
                 >
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
+                  <div className="grid grid-cols-3 gap-2">
                     {Array.from({ length: 12 }).map((_, i) => {
                       const yearBlockStart = Math.floor(viewMonth.getFullYear() / 12) * 12;
                       const y = yearBlockStart + i;
                       return (
                         <button 
                           key={y} 
-                          onClick={() => setViewMonth(new Date(y, viewMonth.getMonth(), 1))} 
-                          style={{ 
-                            padding: '6px 8px', 
-                            borderRadius: 6, 
-                            border: y === viewMonth.getFullYear() ? '1px solid #2768F5' : '1px solid transparent', 
-                            background: y === viewMonth.getFullYear() ? '#eef2ff' : 'transparent', 
-                            cursor: 'pointer',
-                            fontSize: '0.75rem'
-                          }}
+                          onClick={() => handleYearSelect(y)} 
+                          className={`p-3 rounded-lg border text-sm font-medium transition-colors touch-manipulation ${
+                            y === viewMonth.getFullYear() 
+                              ? 'border-blue-600 bg-blue-50 text-blue-700' 
+                              : 'border-transparent bg-gray-50 hover:bg-gray-100 text-gray-700'
+                          }`}
                         >
                           {y}
                         </button>
                       );
                     })}
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
+                  <div className="flex justify-between mt-3">
                     <button 
                       type="button" 
-                      onClick={() => setViewMonth(new Date(viewMonth.getFullYear() - 12, viewMonth.getMonth(), 1))} 
-                      style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
+                      onClick={() => handleNavigation(-12)} 
+                      className="px-4 py-2 text-lg font-bold bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors touch-manipulation"
                     >
                       «
                     </button>
                     <button 
                       type="button" 
-                      onClick={() => setViewMonth(new Date(viewMonth.getFullYear() + 12, viewMonth.getMonth(), 1))} 
-                      style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
+                      onClick={() => handleNavigation(12)} 
+                      className="px-4 py-2 text-lg font-bold bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors touch-manipulation"
                     >
                       »
                     </button>
@@ -170,25 +208,38 @@ export function DatePicker({ selected, onSelect, placeholder = "Selecciona una f
             </div>
           </div>
 
-          <Calendar 
-            mode="single" 
-            selected={selected} 
-            onSelect={onSelect}
-            className="rounded-md text-sm"
-            captionLayout="label"
-            classNames={{ caption_label: 'invisible' }}
-            month={viewMonth}
-            onMonthChange={(d) => setViewMonth(d)}
-            startMonth={startMonth}
-            endMonth={endMonth}
-            locale={es}
-            defaultMonth={selected || new Date(1990, 0)}
-            formatters={{
-              formatMonthDropdown: (date) =>
-                date.toLocaleString("es-ES", { month: "long" }),
-              formatYearDropdown: (date) => date.getFullYear().toString(),
-            }}
-          />
+          {/* Calendario */}
+          <div className="px-2 pb-4">
+            <Calendar 
+              mode="single" 
+              selected={selected} 
+              onSelect={handleDateSelect}
+              className="rounded-md text-sm"
+              captionLayout="label"
+              classNames={{ 
+                caption_label: 'invisible',
+                day: 'h-9 w-9 p-0 text-sm font-normal aria-selected:opacity-100',
+                day_button: 'h-full w-full',
+                head_cell: 'h-9 w-9 p-0 text-sm font-normal',
+                cell: 'h-9 w-9 p-0 relative'
+              }}
+              month={viewMonth}
+              onMonthChange={(d) => setViewMonth(d)}
+              startMonth={startMonth}
+              endMonth={endMonth}
+              locale={es}
+              defaultMonth={selected || new Date(1990, 0)}
+              formatters={{
+                formatMonthDropdown: (date) =>
+                  date.toLocaleString("es-ES", { month: "long" }),
+                formatYearDropdown: (date) => date.getFullYear().toString(),
+              }}
+              style={{
+                minWidth: '280px',
+                maxWidth: '100%'
+              }}
+            />
+          </div>
         </div>
       </PopoverContent>
     </Popover>

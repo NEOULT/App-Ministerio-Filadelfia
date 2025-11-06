@@ -47,7 +47,6 @@ export default function App() {
   // Se soporta también la variable antigua IS_SUNDAY como fallback si existe.
   // Si ninguna está presente, se usa la fecha local (0 = Sunday).
   const _envIsSunday = (import.meta.env.VITE_IS_SUNDAY ?? import.meta.env.IS_SUNDAY) as string | undefined;
-  console.log(_envIsSunday);
   
   const isSunday = typeof _envIsSunday === 'string' && _envIsSunday.trim() !== ''
     ? _envIsSunday.trim().toLowerCase() === 'true'
