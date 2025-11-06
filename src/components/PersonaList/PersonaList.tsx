@@ -144,6 +144,7 @@ export default function PersonasList() {
             Limpiar
           </Button>
           <Button
+            variant="outline"
             size="sm"
             onClick={load}
             disabled={loading}
