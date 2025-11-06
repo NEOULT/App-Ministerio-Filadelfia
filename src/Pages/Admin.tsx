@@ -6,7 +6,7 @@ import { Users, GraduationCap, Home } from 'lucide-react'
 import PersonaList from '@/components/PersonaList/PersonaList'
 
 export default function Admin() {
-  const SECRET_ADMIN_HASH = '#/__sigma-astral-portal__b2f9a7-91a4'
+  const SECRET_ADMIN_HASH = '#/__sigma-astral-portal__c3d4e2-4f10'
   const [hash, setHash] = useState(window.location.hash)
   const [reload, setReload] = useState(0)
 

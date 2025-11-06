@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getPersonas, type Persona } from '../../services/Api'
+import { getPersonas, type Persona, type PaginatedResponse } from '../../services/Api'
 import { Input } from '../Input/Input'
 import { Button } from '../ui/button'
 import { Search, X, RefreshCw, User, Mail, Phone, IdCard } from 'lucide-react'
@@ -25,8 +25,32 @@ export default function PersonasList() {
       })
       
       // getPersonas devuelve PaginatedResponse<Persona>
-      setList(Array.isArray(data.data) ? data.data : [])
-      setTotalItems(data.totalItems || 0)
+      const raw = Array.isArray((data as PaginatedResponse<unknown>).data) ? ((data as PaginatedResponse<unknown>).data as unknown[]) : []
+      // Normalize backend objects to the Persona shape the UI expects
+      const normalized = raw.map((p: unknown) => {
+        const obj = p as Record<string, unknown>;
+        const nombre = typeof obj.nombre === 'string' ? obj.nombre : '';
+        const apellido = typeof obj.apellido === 'string' ? obj.apellido : '';
+        const nombreCompleto = typeof obj.nombreCompleto === 'string'
+          ? obj.nombreCompleto
+          : `${nombre} ${apellido}`.trim();
+        const ced = obj.cedula !== undefined ? String(obj.cedula) : '';
+        return {
+          _id: String(obj._id ?? ''),
+          cedula: ced,
+          nombreCompleto,
+          email: typeof obj.email === 'string' ? obj.email : undefined,
+          telefono: typeof obj.telefono === 'string' ? String(obj.telefono) : undefined,
+          fechaNacimiento: typeof obj.fecha_nacimiento === 'string'
+            ? obj.fecha_nacimiento
+            : (typeof obj.fechaNacimiento === 'string' ? obj.fechaNacimiento : undefined),
+          direccion: typeof obj.direccion === 'string' ? obj.direccion : undefined,
+          createdAt: typeof obj.createdAt === 'string' ? obj.createdAt : undefined,
+          updatedAt: typeof obj.updatedAt === 'string' ? obj.updatedAt : undefined,
+        } as Persona;
+  });
+      setList(normalized);
+  setTotalItems(((data as PaginatedResponse<Persona>)?.totalItems) || normalized.length);
     } catch (err) {
       setError((err as Error).message || 'Error al cargar jóvenes')
       setList([])
@@ -36,6 +60,7 @@ export default function PersonasList() {
     }
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load() }, [])
 
   const handleClear = () => {
@@ -119,6 +144,7 @@ export default function PersonasList() {
             Limpiar
           </Button>
           <Button
+            variant="outline"
             size="sm"
             onClick={load}
             disabled={loading}

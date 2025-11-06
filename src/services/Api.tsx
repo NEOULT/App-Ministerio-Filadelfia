@@ -13,7 +13,7 @@ export interface Persona {
 
 export interface Actividad {
   _id: string;
-  nombre: string;
+  titulo: string;
   descripcion?: string;
   fecha: string;
   asistentes?: string[];
@@ -54,9 +54,11 @@ export interface CreatePersonaPayload {
 }
 
 export interface CreateActividadPayload {
-  nombre: string;
+  titulo: string;
   descripcion?: string;
   fecha: string;
+  asistentes?: string[];
+  ponentes?: string[];
 }
 
 export interface GetActividadesSemanaParams {
@@ -64,13 +66,21 @@ export interface GetActividadesSemanaParams {
 }
 
 export interface AsistenciaResponse {
-  message: string;
-  actividad: Actividad;
+  message?: string;
+  actividad?: Actividad;
+  // registered: whether the person was newly marked as attended (true) or was already registered (false)
+  registered?: boolean;
 }
 
 interface ApiError extends Error {
   status?: number;
   payload?: unknown;
+}
+
+interface ApiEnvelope<T = unknown> {
+  status?: string;
+  data?: T;
+  [key: string]: unknown;
 }
 
 const API_BASE = "https://backend01-proyecto-jovenes-phru.vercel.app";
@@ -94,7 +104,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   return data as T;
 }
 
-export function getPersonas(
+export async function getPersonas(
   params: GetPersonasParams = {}
 ): Promise<PaginatedResponse<Persona>> {
   const { cedula, nombreCompleto, currentPage, limit } = params;
@@ -105,14 +115,46 @@ export function getPersonas(
   if (limit) searchParams.set("limit", String(limit));
 
   const qp = searchParams.toString();
-  return request<PaginatedResponse<Persona>>(`/personas${qp ? `?${qp}` : ""}`);
+  const res = await request<ApiEnvelope<PaginatedResponse<Persona>> | Persona[]>(`/personas${qp ? `?${qp}` : ""}`);
+
+  // If backend returned an envelope with .data (paginated), return it
+  if (res && typeof res === 'object' && Array.isArray((res as ApiEnvelope).data)) {
+    return (res as ApiEnvelope<PaginatedResponse<Persona>>).data as PaginatedResponse<Persona>;
+  }
+
+  // If backend returned a plain array of personas, synthesize a PaginatedResponse
+  if (Array.isArray(res)) {
+    const arr = res as Persona[];
+    return {
+      data: arr,
+      currentPage: 1,
+      totalPages: 1,
+      totalItems: arr.length,
+      limit: arr.length,
+    } as PaginatedResponse<Persona>;
+  }
+
+  // Fallback empty
+  return {
+    data: [],
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+    limit: 0,
+  };
 }
 
-export function createPersona(payload: CreatePersonaPayload): Promise<Persona> {
-  return request<Persona>("/personas", {
+export async function createPersona(payload: CreatePersonaPayload): Promise<Persona> {
+  // The backend returns an envelope { status, data } — unwrap data for callers
+  const res = await request<ApiEnvelope<Persona>>("/personas", {
     method: "POST",
     body: JSON.stringify(payload),
   });
+  if (res && typeof res === "object" && "data" in res && res.data) {
+    return res.data as Persona;
+  }
+  // Fallback: if backend returned the persona directly
+  return (res as unknown) as Persona;
 }
 
 export function getActividades(): Promise<Actividad[]> {
@@ -128,26 +170,35 @@ export function createActividad(
   });
 }
 
-export function getActividadesSemana(
+export async function getActividadesSemana(
   params: GetActividadesSemanaParams = {}
 ): Promise<Actividad[]> {
   const { fecha } = params;
   const searchParams = new URLSearchParams();
   if (fecha) searchParams.set("fecha", fecha);
   const qp = searchParams.toString();
-  return request<Actividad[]>(`/actividades/semana${qp ? `?${qp}` : ""}`);
+  // backend returns envelope { status, from, to, count, data }
+  const res = await request<ApiEnvelope<Actividad[]>>(`/actividades/semana${qp ? `?${qp}` : ""}`);
+  if (res && typeof res === "object" && Array.isArray(res.data)) {
+    return res.data as Actividad[];
+  }
+  // fallback: if API already returned an array
+  if (Array.isArray(res)) return res as Actividad[];
+  return [];
 }
 
-export function asistirActividad(
+export async function asistirActividad(
   id: string,
   personaId: string
-): Promise<AsistenciaResponse> {
+): Promise<ApiEnvelope<AsistenciaResponse> | AsistenciaResponse> {
   if (!id) throw new Error("Clase id requerido");
   if (!personaId) throw new Error("personaId requerido");
-  return request<AsistenciaResponse>(`/actividades/${id}/asistir`, {
+  const res = await request<ApiEnvelope<AsistenciaResponse>>(`/actividades/${id}/asistir`, {
     method: "POST",
     body: JSON.stringify({ personaId }),
   });
+  // return the envelope so callers can inspect 'registered' and 'message'
+  return res as ApiEnvelope<AsistenciaResponse>;
 }
 
 export default {

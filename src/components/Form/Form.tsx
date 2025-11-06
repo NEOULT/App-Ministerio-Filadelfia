@@ -1,16 +1,31 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/Input/Input";
 import { DatePicker } from "@/components/DatePicker/DatePicker";
-import { createPersona } from "@/services/Api";
+import { createPersona, getActividadesSemana, asistirActividad, getPersonas, type Persona } from "@/services/Api";
 import { SuccessDialog } from "@/components/SuccessDialog/SuccessDialog";
+
+export type FormInitialData = Partial<{
+  nombre: string;
+  apellido: string;
+  cedula: string;
+  telefono: string;
+  correo: string;
+  fechaNacimiento: Date | undefined;
+  bautizado: boolean;
+  genero: string;
+  ministerio: string;
+  nivel_academico: string;
+  ocupacion: string;
+}>;
 
 interface FormProps {
   onBack: () => void;
+  initialData?: FormInitialData;
 }
 
-export const Form = ({ onBack }: FormProps) => {
-  const [formData, setFormData] = useState({
+export const Form = ({ onBack, initialData }: FormProps) => {
+  const defaultState = {
     nombre: "",
     apellido: "",
     cedula: "",
@@ -23,11 +38,28 @@ export const Form = ({ onBack }: FormProps) => {
     ministerio: "",
     nivel_academico: "",
     ocupacion: "",
-  });
+  };
+
+  const [formData, setFormData] = useState(() => ({ ...defaultState, ...(initialData || {}) }));
   const [showSuccess, setShowSuccess] = useState(false);
   const [successName, setSuccessName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<string, string>>>({});
+
+  // If another flow stored prefill data (e.g. AsistenceModal), consume it on mount
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('prefill_persona');
+      if (raw) {
+        const parsed = JSON.parse(raw) as Record<string, string>;
+        setFormData((prev) => ({ ...prev, ...(initialData || {}), ...parsed }));
+        sessionStorage.removeItem('prefill_persona');
+      }
+    } catch {
+      // ignore parse errors
+    }
+  }, [initialData]);
 
   // --- Phone and Cedula helpers (store digits; format for display) ---
   const formatPhoneDisplay = (digits: string) => {
@@ -106,11 +138,14 @@ export const Form = ({ onBack }: FormProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Validar sólo los campos obligatorios: nombre, apellido, fecha de nacimiento
-    if (!formData.nombre || !formData.apellido || !formData.fechaNacimiento) {
-      alert("Por favor completa Nombre, Apellido y Fecha de Nacimiento.");
-      return;
+    // Validación: nombre, apellido y fecha de nacimiento son obligatorios
+    const errs: Partial<Record<string, string>> = {}
+    if (!formData.nombre || !formData.nombre.trim()) errs.nombre = 'El nombre es requerido.'
+    if (!formData.apellido || !formData.apellido.trim()) errs.apellido = 'El apellido es requerido.'
+    if (!formData.fechaNacimiento) errs.fechaNacimiento = '   La fecha de nacimiento es requerida.'
+    if (Object.keys(errs).length) {
+      setFieldErrors((prev) => ({ ...prev, ...errs }))
+      return
     }
 
     // Preparar payload en snake_case para el backend
@@ -126,8 +161,8 @@ export const Form = ({ onBack }: FormProps) => {
       ministerio: formData.ministerio || undefined,
       nivel_academico: formData.nivel_academico || undefined,
       ocupacion: formData.ocupacion || undefined,
-  // send bautizado explicitly (backend may require boolean)
-  bautizado: formData.bautizado,
+      // send bautizado explicitly (backend may require boolean)
+      bautizado: formData.bautizado,
       genero: formData.genero || undefined,
     };
 
@@ -159,19 +194,7 @@ export const Form = ({ onBack }: FormProps) => {
     setSuccessName("");
     
     // Limpiar el formulario
-    setFormData({
-      nombre: "",
-      apellido: "",
-      cedula: "",
-      telefono: "",
-      correo: "",
-      fechaNacimiento: undefined,
-      bautizado: false,
-      genero: "",
-      ministerio: "",
-      nivel_academico: "",
-      ocupacion: "",
-    });
+    setFormData({ ...defaultState });
     
     // Volver a la página principal
     onBack();
@@ -192,24 +215,24 @@ export const Form = ({ onBack }: FormProps) => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
-              label="Nombre"
+              label="Nombres"
               type="text"
               value={formData.nombre}
               onChange={(e) =>
                 setFormData({ ...formData, nombre: e.target.value })
               }
-              placeholder="Tu nombre"
+              placeholder="Tus nombres"
               required
             />
 
             <Input
-              label="Apellido"
+              label="Apellidos"
               type="text"
               value={formData.apellido}
               onChange={(e) =>
                 setFormData({ ...formData, apellido: e.target.value })
               }
-              placeholder="Tu apellido"
+              placeholder="Tus apellidos"
               required
             />
           </div>
@@ -222,6 +245,9 @@ export const Form = ({ onBack }: FormProps) => {
             placeholder="V-12345678"
             // opcional
           />
+          {fieldErrors.cedula && (
+            <small style={{ color: 'red', fontSize: '0.875rem' }}>{fieldErrors.cedula}</small>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
@@ -231,10 +257,20 @@ export const Form = ({ onBack }: FormProps) => {
               </label>
               <DatePicker
                 selected={formData.fechaNacimiento}
-                onSelect={(date) =>
+                onSelect={(date) => {
                   setFormData({ ...formData, fechaNacimiento: date })
-                }
+                  // clear fechaNacimiento error when user picks a date
+                  setFieldErrors((prev) => {
+                    const copy = { ...prev }
+                    delete copy.fechaNacimiento
+                    return copy
+                  })
+                }}
+                rightSlot={formData.fechaNacimiento ? `Edad : ${calculateAge(formData.fechaNacimiento)}` : undefined}
               />
+              {fieldErrors.fechaNacimiento && (
+                <small style={{ color: 'red', fontSize: '0.875rem' }}>{fieldErrors.fechaNacimiento}</small>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: '#374151' }}>
@@ -288,6 +324,9 @@ export const Form = ({ onBack }: FormProps) => {
             placeholder="tu@correo.com"
             // opcional
           />
+          {fieldErrors.correo && (
+            <small style={{ color: 'red', fontSize: '0.875rem' }}>{fieldErrors.correo}</small>
+          )}
 
           {/* Bautizado moved to the end of the form */}
           <Input

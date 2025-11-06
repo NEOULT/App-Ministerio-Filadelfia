@@ -12,10 +12,11 @@ export default function App() {
   const { width, height } = useWindowSize();
   const [route, setRoute] = useState(window.location.hash || '#/');
   const [currentView, setCurrentView] = useState<'home' | 'form'>('home');
+  const [formInitialData, setFormInitialData] = useState<Record<string, string> | undefined>(undefined)
   const [actividadActual, setActividadActual] = useState<Actividad | null>(null);
   
   // Secret admin route: type or share this hash to access admin
-  const SECRET_ADMIN_HASH = '#/__sigma-astral-portal__b2f9a7-91a4';
+  const SECRET_ADMIN_HASH = '#/__sigma-astral-portal__c3d4e2-4f10';
 
   useEffect(() => {
     const onHashChange = () => setRoute(window.location.hash || '#/');
@@ -42,15 +43,28 @@ export default function App() {
 
   const isAdmin = route.startsWith(SECRET_ADMIN_HASH);
 
-  // Verificar si hoy es domingo (0 = domingo, 6 = sábado)
-  const isSunday = new Date().getDay() === 0;
+  // Verificar si hoy es domingo. Puede forzarse en build/runtime con VITE_IS_SUNDAY.
+  // Se soporta también la variable antigua IS_SUNDAY como fallback si existe.
+  // Si ninguna está presente, se usa la fecha local (0 = Sunday).
+  const _envIsSunday = (import.meta.env.VITE_IS_SUNDAY ?? import.meta.env.IS_SUNDAY) as string | undefined;
+  console.log(_envIsSunday);
+  
+  const isSunday = typeof _envIsSunday === 'string' && _envIsSunday.trim() !== ''
+    ? _envIsSunday.trim().toLowerCase() === 'true'
+    : new Date().getDay() === 0;
 
   const handleContinue = () => {
     setCurrentView('form');
   };
 
+  const handleRegisterRedirect = (initial: Record<string, string>) => {
+    setFormInitialData(initial)
+    setCurrentView('form')
+  }
+
   const handleBack = () => {
     setCurrentView('home');
+    setFormInitialData(undefined)
   };
 
   // Si es la ruta de administración, muestra el Admin
@@ -71,7 +85,7 @@ export default function App() {
 
   // Si currentView es 'form', muestra el formulario
   if (currentView === 'form') {
-    return <Form onBack={handleBack} />;
+    return <Form onBack={handleBack} initialData={formInitialData} />;
   }
 
   // Si viewForm es false, muestra la página de bienvenida
@@ -92,11 +106,11 @@ export default function App() {
           ¡Únete a la Juventud de la Iglesia!
         </h1>
         <p className="text-center text-[14px] lg:text-2xl md:text-sm  ">
-          Inscríbete hoy, conecta con tu fe y haz nuevos amigos.
+          ¡Inscríbete hoy y ven a vivir momentos increíbles: fe, risas y nuevos amigos te esperan!
         </p>
       </div>
       <Modal onContinue={handleContinue} />
-      {isSunday && actividadActual && <AsistenceModal actividadId={actividadActual?._id || ''} />}
+      {isSunday && actividadActual && <AsistenceModal onRegisterRedirect={handleRegisterRedirect} actividadId={actividadActual?._id || ''} />}
     </div>
   );
 }

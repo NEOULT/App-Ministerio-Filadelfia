@@ -12,13 +12,13 @@ interface ClaseFormProps {
 }
 
 interface FormData {
-  nombre: string
+  titulo: string
   fecha: Date | null
   descripcion: string
 }
 
 export default function ClaseForm({ onCreated }: ClaseFormProps) {
-  const [form, setForm] = useState<FormData>({ nombre: '', fecha: null, descripcion: '' })
+  const [form, setForm] = useState<FormData>({ titulo: '', fecha: null, descripcion: '' })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof FormData, string>>>({})
@@ -26,8 +26,8 @@ export default function ClaseForm({ onCreated }: ClaseFormProps) {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-    const errs: Partial<Record<keyof FormData, string>> = {}
-    if (!form.nombre.trim()) errs.nombre = 'El nombre es requerido'
+  const errs: Partial<Record<keyof FormData, string>> = {}
+  if (!form.titulo.trim()) errs.titulo = 'El título es requerido'
     if (!form.fecha) errs.fecha = 'La fecha es requerida'
     setFieldErrors(errs)
     if (Object.keys(errs).length) return
@@ -35,14 +35,17 @@ export default function ClaseForm({ onCreated }: ClaseFormProps) {
     try {
       setSaving(true)
       const payload: CreateActividadPayload = {
-        nombre: form.nombre.trim(),
+        titulo: form.titulo.trim(),
         fecha: form.fecha!.toISOString().split('T')[0],
       }
-      if (form.descripcion.trim()) {
+      if (form.descripcion && form.descripcion.trim()) {
         payload.descripcion = form.descripcion.trim()
       }
+      // backend accepts asistentes and ponentes arrays; send empty arrays by default
+      payload.asistentes = []
+      payload.ponentes = []
       await createActividad(payload)
-      setForm({ nombre: '', fecha: null, descripcion: '' })
+      setForm({ titulo: '', fecha: null, descripcion: '' })
       onCreated?.()
     } catch (e) {
       setError((e as Error).message || 'Error al crear la clase')
@@ -58,13 +61,13 @@ export default function ClaseForm({ onCreated }: ClaseFormProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <Input
-            label="Nombre de la clase"
-            value={form.nombre}
-            onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+            label="Título de la clase"
+            value={form.titulo}
+            onChange={(e) => setForm({ ...form, titulo: e.target.value })}
             placeholder="Ej: Estudio Bíblico"
-            className={fieldErrors.nombre ? 'border-red-500' : ''}
+            className={fieldErrors.titulo ? 'border-red-500' : ''}
           />
-          {fieldErrors.nombre && <small style={{ color: 'red', fontSize: '0.875rem' }}>{fieldErrors.nombre}</small>}
+          {fieldErrors.titulo && <small style={{ color: 'red', fontSize: '0.875rem' }}>{fieldErrors.titulo}</small>}
         </div>
 
         <div>
@@ -124,7 +127,7 @@ export default function ClaseForm({ onCreated }: ClaseFormProps) {
       </div>
 
       <div style={{ textAlign: 'right' }}>
-        <Button type="submit" disabled={saving}>
+        <Button type="submit" disabled={saving} variant="outline">
           {saving ? 'Creando...' : 'Crear Clase'}
         </Button>
       </div>

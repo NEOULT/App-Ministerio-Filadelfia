@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getActividades, createActividad, type Actividad, type CreateActividadPayload } from '../../services/Api'
+import { formatDateStringForDisplay } from '../../lib/utils'
 import { Input } from '../Input/Input'
 import { Button } from '../ui/button'
 import { Calendar } from '../ui/calendar'
@@ -8,7 +9,7 @@ import { format } from 'date-fns'
 import { CalendarIcon, RefreshCw, Plus } from 'lucide-react'
 
 interface FormData {
-  nombre: string
+  titulo: string
   fecha: Date | null
   descripcion: string
 }
@@ -17,10 +18,10 @@ export default function ClasesPanel() {
   const [list, setList] = useState<Actividad[]>([])
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [form, setForm] = useState<FormData>({ nombre: '', fecha: null, descripcion: '' })
+  const [form, setForm] = useState<FormData>({ titulo: '', fecha: null, descripcion: '' })
   const [error, setError] = useState('')
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof FormData, string>>>({})
-  const [sortField, setSortField] = useState<'nombre' | 'fecha'>('fecha')
+  const [sortField, setSortField] = useState<'titulo' | 'fecha'>('fecha')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [showForm, setShowForm] = useState(false)
 
@@ -42,8 +43,8 @@ export default function ClasesPanel() {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-    const errs: Partial<Record<keyof FormData, string>> = {}
-    if (!form.nombre.trim()) errs.nombre = 'El nombre es requerido'
+  const errs: Partial<Record<keyof FormData, string>> = {}
+  if (!form.titulo.trim()) errs.titulo = 'El título es requerido'
     if (!form.fecha) errs.fecha = 'La fecha es requerida'
     setFieldErrors(errs)
     if (Object.keys(errs).length) return
@@ -51,14 +52,14 @@ export default function ClasesPanel() {
     try {
       setSaving(true)
       const payload: CreateActividadPayload = {
-        nombre: form.nombre.trim(),
+        titulo: form.titulo.trim(),
         fecha: form.fecha!.toISOString().split('T')[0],
       }
       if (form.descripcion.trim()) {
         payload.descripcion = form.descripcion.trim()
       }
       await createActividad(payload)
-      setForm({ nombre: '', fecha: null, descripcion: '' })
+      setForm({ titulo: '', fecha: null, descripcion: '' })
       setShowForm(false)
       await load()
     } catch (e) {
@@ -68,7 +69,7 @@ export default function ClasesPanel() {
     }
   }
 
-  const handleSort = (field: 'nombre' | 'fecha') => {
+  const handleSort = (field: 'titulo' | 'fecha') => {
     if (sortField === field) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
     } else {
@@ -78,9 +79,9 @@ export default function ClasesPanel() {
   }
 
   const sortedList = [...list].sort((a, b) => {
-    let aVal = a[sortField] || ''
-    let bVal = b[sortField] || ''
-    
+    const aVal = a[sortField as keyof typeof a] || ''
+    const bVal = b[sortField as keyof typeof b] || ''
+
     if (sortOrder === 'asc') {
       return aVal > bVal ? 1 : -1
     } else {
@@ -146,13 +147,13 @@ export default function ClasesPanel() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Input
-                  label="Nombre de la clase"
-                  value={form.nombre}
-                  onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+                  label="Título de la clase"
+                  value={form.titulo}
+                  onChange={(e) => setForm({ ...form, titulo: e.target.value })}
                   placeholder="Ej: Estudio Bíblico"
-                  className={fieldErrors.nombre ? 'border-red-500' : ''}
+                  className={fieldErrors.titulo ? 'border-red-500' : ''}
                 />
-                {fieldErrors.nombre && <small style={{ color: 'red', fontSize: '0.875rem' }}>{fieldErrors.nombre}</small>}
+                {fieldErrors.titulo && <small style={{ color: 'red', fontSize: '0.875rem' }}>{fieldErrors.titulo}</small>}
               </div>
 
               <div>
@@ -217,7 +218,7 @@ export default function ClasesPanel() {
                 variant="outline"
                 onClick={() => {
                   setShowForm(false)
-                  setForm({ nombre: '', fecha: null, descripcion: '' })
+                  setForm({ titulo: '', fecha: null, descripcion: '' })
                   setFieldErrors({})
                 }}
               >
@@ -274,8 +275,8 @@ export default function ClasesPanel() {
               }}>
                 <thead>
                   <tr style={{ backgroundColor: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
-                    <th
-                      onClick={() => handleSort('nombre')}
+              <th
+                onClick={() => handleSort('titulo')}
                       style={{
                         padding: '14px 16px',
                         textAlign: 'left',
@@ -288,7 +289,7 @@ export default function ClasesPanel() {
                       onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
                       onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                     >
-                      Nombre {sortField === 'nombre' && (sortOrder === 'asc' ? '↑' : '↓')}
+                      Título {sortField === 'titulo' && (sortOrder === 'asc' ? '↑' : '↓')}
                     </th>
                     <th
                       onClick={() => handleSort('fecha')}
@@ -344,17 +345,17 @@ export default function ClasesPanel() {
                         color: '#1f2937',
                         fontWeight: 500
                       }}>
-                        {clase.nombre || '-'}
+                        {clase.titulo || '-'}
                       </td>
                       <td style={{
                         padding: '14px 16px',
                         color: '#6b7280'
                       }}>
-                        {clase.fecha ? new Date(clase.fecha).toLocaleDateString('es-ES', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric'
-                        }) : '-'}
+                        {clase.fecha ? formatDateStringForDisplay(clase.fecha, 'es-ES', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric'
+                          }) : '-'}
                       </td>
                       <td style={{
                         padding: '14px 16px',

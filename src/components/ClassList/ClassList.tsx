@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getActividades } from '@/services/Api'
 import type { Actividad } from '@/services/Api'
+import { formatDateStringForDisplay } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { RefreshCw } from 'lucide-react'
 
@@ -12,7 +13,7 @@ export default function ClasesList({ reloadSignal = 0 }: ClasesListProps) {
   const [list, setList] = useState<Actividad[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [sortField, setSortField] = useState<'nombre' | 'fecha'>('fecha')
+  const [sortField, setSortField] = useState<'titulo' | 'fecha'>('fecha')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
   const load = async () => {
@@ -31,7 +32,7 @@ export default function ClasesList({ reloadSignal = 0 }: ClasesListProps) {
   useEffect(() => { load() }, [])
   useEffect(() => { if (reloadSignal) load() }, [reloadSignal])
 
-  const handleSort = (field: 'nombre' | 'fecha') => {
+  const handleSort = (field: 'titulo' | 'fecha') => {
     if (sortField === field) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
     } else {
@@ -41,8 +42,8 @@ export default function ClasesList({ reloadSignal = 0 }: ClasesListProps) {
   }
 
   const sortedList = [...list].sort((a, b) => {
-    let aVal = a[sortField] || ''
-    let bVal = b[sortField] || ''
+    const aVal = a[sortField] || ''
+    const bVal = b[sortField] || ''
     
     if (sortOrder === 'asc') {
       return aVal > bVal ? 1 : -1
@@ -115,7 +116,7 @@ export default function ClasesList({ reloadSignal = 0 }: ClasesListProps) {
               <thead>
                 <tr style={{ backgroundColor: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
                   <th
-                    onClick={() => handleSort('nombre')}
+                    onClick={() => handleSort('titulo')}
                     style={{
                       padding: '12px 16px',
                       textAlign: 'left',
@@ -125,7 +126,7 @@ export default function ClasesList({ reloadSignal = 0 }: ClasesListProps) {
                       userSelect: 'none'
                     }}
                   >
-                    Nombre {sortField === 'nombre' && (sortOrder === 'asc' ? '↑' : '↓')}
+                    Título {sortField === 'titulo' && (sortOrder === 'asc' ? '↑' : '↓')}
                   </th>
                   <th
                     onClick={() => handleSort('fecha')}
@@ -178,13 +179,13 @@ export default function ClasesList({ reloadSignal = 0 }: ClasesListProps) {
                       color: '#1f2937',
                       fontWeight: 500
                     }}>
-                      {clase.nombre || '-'}
+                      {clase.titulo || '-'}
                     </td>
                     <td style={{
                       padding: '12px 16px',
                       color: '#6b7280'
                     }}>
-                      {clase.fecha ? new Date(clase.fecha).toLocaleDateString('es-ES', {
+                      {clase.fecha ? formatDateStringForDisplay(clase.fecha, 'es-ES', {
                         year: 'numeric',
                         month: 'short',
                         day: 'numeric'

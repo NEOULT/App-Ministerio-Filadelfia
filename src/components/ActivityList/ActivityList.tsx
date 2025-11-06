@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getActividades, type Actividad } from '@/services/Api'
+import { formatDateStringForDisplay } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { RefreshCw, Calendar, Users, FileText } from 'lucide-react'
 
@@ -138,7 +139,7 @@ export default function ActividadesList() {
                   color: '#1f2937',
                   flex: 1
                 }}>
-                  {actividad.nombre || 'Sin nombre'}
+                  {actividad.titulo || 'Sin título'}
                 </h3>
                 {actividad.fecha && (
                   <div style={{
@@ -154,7 +155,7 @@ export default function ActividadesList() {
                     whiteSpace: 'nowrap'
                   }}>
                     <Calendar className="h-3 w-3" />
-                    {new Date(actividad.fecha).toLocaleDateString('es-ES', {
+                    {formatDateStringForDisplay(actividad.fecha, 'es-ES', {
                       year: 'numeric',
                       month: 'short',
                       day: 'numeric'

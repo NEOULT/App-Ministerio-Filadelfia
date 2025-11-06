@@ -1,14 +1,12 @@
-import React from "react";
-
 interface LogoFilaProps {
-  height: number;
-  width: number;
+  height?: number;
+  width?: number;
 }
 
-export const LogoFiladelfia = () => {
+export const LogoFiladelfia = ({ width = 200, height = 175 }: LogoFilaProps) => {
   return (
     <svg version="1.0" xmlns="http://www.w3.org/2000/svg"
-    width={200} height={175} viewBox="0 0 601.000000 523.000000"
+    width={width} height={height} viewBox="0 0 601.000000 523.000000"
     preserveAspectRatio="xMidYMid meet">
    
    <g transform="translate(0.000000,523.000000) scale(0.100000,-0.100000)"
