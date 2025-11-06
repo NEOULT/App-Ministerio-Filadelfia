@@ -144,8 +144,8 @@ export const Form = ({ onBack, initialData }: FormProps) => {
       let nameToShow = formData.nombre || "";
       if (created && typeof created === "object") {
         const c = created as Record<string, unknown>;
-        if (typeof c["nombre"] === "string") nameToShow = c["nombre"] as string;
-        else if (typeof c["nombre_completo"] === "string") nameToShow = c["nombre_completo"] as string;
+        if (typeof c["nombres"] === "string") nameToShow = c["nombres"] as string;
+        else if (typeof c["nombres_completo"] === "string") nameToShow = c["nombres_completo"] as string;
       }
       setSuccessName(nameToShow);
       // Build a user-facing success message. Only promise follow-up messages if we have contact info.
@@ -261,24 +261,24 @@ Se ha registrado tu asistencia para el día de hoy 🎉`;
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
-              label="Nombre"
+              label="Nombres"
               type="text"
               value={formData.nombre}
               onChange={(e) =>
                 setFormData({ ...formData, nombre: e.target.value })
               }
-              placeholder="Tu nombre"
+              placeholder="Tus nombres"
               required
             />
 
             <Input
-              label="Apellido"
+              label="Apellidos"
               type="text"
               value={formData.apellido}
               onChange={(e) =>
                 setFormData({ ...formData, apellido: e.target.value })
               }
-              placeholder="Tu apellido"
+              placeholder="Tus apellidos"
               required
             />
           </div>
