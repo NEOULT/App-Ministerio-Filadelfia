@@ -58,6 +58,52 @@ export const Form = ({ onBack }: FormProps) => {
     setFormData({ ...formData, cedula: digits });
   };
 
+  // Extrae el nombre de la respuesta del servidor de forma segura
+  const extractNameFromResponse = (
+    response: unknown,
+    fallbackName: string
+  ): string => {
+    if (!response || typeof response !== "object") {
+      return fallbackName || "";
+    }
+
+    const responseObj = response as Record<string, unknown>;
+    
+    if (typeof responseObj["nombre"] === "string") {
+      return responseObj["nombre"];
+    }
+    
+    if (typeof responseObj["nombre_completo"] === "string") {
+      return responseObj["nombre_completo"];
+    }
+
+    return fallbackName || "";
+  };
+
+  // Construye el mensaje de éxito personalizado según si hay información de contacto
+  const buildSuccessMessage = (correo: string, telefono: string): string => {
+    const baseMessage = "¡Gracias por registrarte en el Grupo de Jóvenes con Propósito!";
+    const hasContactInfo = Boolean(correo || telefono);
+    
+    if (hasContactInfo) {
+      return `${baseMessage} Pronto recibirás información sobre las actividades de los Jóvenes.`;
+    }
+    
+    return baseMessage;
+  };
+
+  // Maneja los errores durante el envío del formulario
+  const handleSubmissionError = (err: unknown): void => {
+    console.error("Error creando persona:", err);
+    
+    const errorMessage = err instanceof Error 
+      ? err.message 
+      : String(err);
+    
+    const userMessage = errorMessage || "Error al crear la persona. Intenta de nuevo.";
+    alert(userMessage);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -86,28 +132,21 @@ export const Form = ({ onBack }: FormProps) => {
     };
 
     try {
-  setIsSubmitting(true);
+      setIsSubmitting(true);
+      
       const created: unknown = await createPersona(payload);
-      // extract name from response if present (type-safe)
-      let nameToShow = formData.nombre || "";
-      if (created && typeof created === "object") {
-        const c = created as Record<string, unknown>;
-        if (typeof c["nombre"] === "string") nameToShow = c["nombre"] as string;
-        else if (typeof c["nombre_completo"] === "string") nameToShow = c["nombre_completo"] as string;
-      }
+      
+      // Extraer el nombre de la respuesta de forma segura
+      const nameToShow = extractNameFromResponse(created, formData.nombre);
       setSuccessName(nameToShow);
-      // Build a user-facing success message. Only promise follow-up messages if we have contact info.
-      const base = "¡Gracias por registrarte en el Grupo de Jóvenes con Propósito!";
-      const contactProvided = Boolean(formData.correo || formData.telefono);
-      const followup = contactProvided
-        ? " Pronto recibirás información sobre las actividades de los Jóvenes."
-        : "";
-      setSuccessMessage(`${base}${followup}`);
+      
+      // Construir mensaje de éxito personalizado
+      const successMessage = buildSuccessMessage(formData.correo, formData.telefono);
+      setSuccessMessage(successMessage);
+      
       setShowSuccess(true);
     } catch (err: unknown) {
-      console.error("Error creando persona:", err);
-      const message = err instanceof Error ? err.message : String(err);
-      alert(message || "Error al crear la persona. Intenta de nuevo.");
+      handleSubmissionError(err);
     } finally {
       setIsSubmitting(false);
     }
