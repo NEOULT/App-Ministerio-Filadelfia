@@ -266,7 +266,6 @@ export const Form = ({ onBack, initialData }: FormProps) => {
                     return copy
                   })
                 }}
-                rightSlot={formData.fechaNacimiento ? `Edad : ${calculateAge(formData.fechaNacimiento)}` : undefined}
               />
               {fieldErrors.fechaNacimiento && (
                 <small style={{ color: 'red', fontSize: '0.875rem' }}>{fieldErrors.fechaNacimiento}</small>
