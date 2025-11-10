@@ -90,50 +90,15 @@ export const Form = ({ onBack, initialData }: FormProps) => {
     setFormData({ ...formData, cedula: digits });
   };
 
-  // Extrae el nombre de la respuesta del servidor de forma segura
-  const extractNameFromResponse = (
-    response: unknown,
-    fallbackName: string
-  ): string => {
-    if (!response || typeof response !== "object") {
-      return fallbackName || "";
+  const calculateAge = (d?: Date | undefined) => {
+    if (!d) return null;
+    const today = new Date();
+    let age = today.getFullYear() - d.getFullYear();
+    const m = today.getMonth() - d.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < d.getDate())) {
+      age--;
     }
-
-    const responseObj = response as Record<string, unknown>;
-    
-    if (typeof responseObj["nombre"] === "string") {
-      return responseObj["nombre"];
-    }
-    
-    if (typeof responseObj["nombre_completo"] === "string") {
-      return responseObj["nombre_completo"];
-    }
-
-    return fallbackName || "";
-  };
-
-  // Construye el mensaje de éxito personalizado según si hay información de contacto
-  const buildSuccessMessage = (correo: string, telefono: string): string => {
-    const baseMessage = "¡Gracias por registrarte en el Grupo de Jóvenes con Propósito!";
-    const hasContactInfo = Boolean(correo || telefono);
-    
-    if (hasContactInfo) {
-      return `${baseMessage} Pronto recibirás información sobre las actividades de los Jóvenes.`;
-    }
-    
-    return baseMessage;
-  };
-
-  // Maneja los errores durante el envío del formulario
-  const handleSubmissionError = (err: unknown): void => {
-    console.error("Error creando persona:", err);
-    
-    const errorMessage = err instanceof Error 
-      ? err.message 
-      : String(err);
-    
-    const userMessage = errorMessage || "Error al crear la persona. Intenta de nuevo.";
-    alert(userMessage);
+    return age;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -167,21 +132,105 @@ export const Form = ({ onBack, initialData }: FormProps) => {
     };
 
     try {
+      // clear previous field errors
+      setFieldErrors({});
       setIsSubmitting(true);
-      
       const created: unknown = await createPersona(payload);
-      
-      // Extraer el nombre de la respuesta de forma segura
-      const nameToShow = extractNameFromResponse(created, formData.nombre);
+      // Dev logs: payload sent and response received from createPersona
+      // Useful to debug whether backend returns _id and to inspect server errors
+      // (remove or guard these logs in production)
+      // extract name from response if present (type-safe)
+      let nameToShow = formData.nombre || "";
+      if (created && typeof created === "object") {
+        const c = created as Record<string, unknown>;
+        if (typeof c["nombres"] === "string") nameToShow = c["nombres"] as string;
+        else if (typeof c["nombres_completo"] === "string") nameToShow = c["nombres_completo"] as string;
+      }
       setSuccessName(nameToShow);
-      
-      // Construir mensaje de éxito personalizado
-      const successMessage = buildSuccessMessage(formData.correo, formData.telefono);
-      setSuccessMessage(successMessage);
-      
+      // Build a user-facing success message. Only promise follow-up messages if we have contact info.
+      let base = "¡Gracias por registrarte en el Grupo de Jóvenes con Propósito!";
+      const contactProvided = Boolean(formData.correo || formData.telefono);
+      const followup = contactProvided
+        ? " Pronto recibirás información sobre las actividades de los Jóvenes."
+        : "";
+
+      // Intentar marcar asistencia automáticamente para la(s) actividad(es) del día
+      try {
+        // Build local date YYYY-MM-DD to avoid timezone shifts (toISOString can shift the day)
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, "0");
+        const dd = String(today.getDate()).padStart(2, "0");
+        const fechaHoy = `${yyyy}-${mm}-${dd}`;
+        const actividades = await getActividadesSemana({ fecha: fechaHoy });
+        if (Array.isArray(actividades) && actividades.length > 0) {
+          const actividad = actividades[0];
+          // created should contain the persona id returned by createPersona
+          // Prefer the _id from the create response; if backend didn't return it, try to lookup by cédula
+          let personaId = (created as Persona)?._id;
+          if (!personaId) {
+            try {
+              const ced = formData.cedula;
+              if (ced) {
+                const found = await getPersonas({ cedula: ced });
+                // Dev log: resultado de buscar persona por cédula
+                if (found && Array.isArray(found.data) && found.data.length > 0) {
+                  personaId = found.data[0]._id;
+                }
+              }
+            } catch (lookupErr) {
+              console.error('No se pudo buscar la persona por cédula tras crearla:', lookupErr);
+            }
+          }
+
+          if (personaId) {
+            try {
+              const asistirResp = await asistirActividad(actividad._id, personaId);
+              // Try to extract a human message from the response (may be top-level or under .data)
+              let attendanceMessage: string | undefined;
+              if (asistirResp && typeof asistirResp === 'object') {
+                const ar = asistirResp as Record<string, unknown>;
+                if (typeof ar.message === 'string') attendanceMessage = ar.message;
+                else if (ar.data && typeof ar.data === 'object') {
+                  const d = ar.data as Record<string, unknown>;
+                  if (typeof d.message === 'string') attendanceMessage = d.message;
+                }
+              }
+              // If backend returns a message that starts with 'Gracias' (or '¡Gracias'), strip it to avoid repeating the thank-you.
+              if (attendanceMessage) {
+                attendanceMessage = attendanceMessage.replace(/^\s*¡?Gracias[.,!\s-]*/i, '').trim();
+              }
+              if (attendanceMessage) {
+                base = `${base}\n¡Y por asistir a la clase de hoy!`;
+              }
+            } catch (attErr) {
+              console.error('No se pudo registrar la asistencia automaticamente:', attErr);
+              // do not block success; optionally notify user later
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Error comprobando actividades del dia:', e);
+      }
+
+      setSuccessMessage(`${base}${followup}`);
       setShowSuccess(true);
     } catch (err: unknown) {
-      handleSubmissionError(err);
+      console.error("Error creando persona:", err);
+      // If the API returned a structured payload with duplicate key info, map it to fieldErrors
+      type ApiErrorPayload = { payload?: { code?: string; message?: string; errors?: Array<{ field: string; value?: unknown; message?: string }> } };
+      const maybeErr = err as unknown as ApiErrorPayload;
+      const payload = maybeErr?.payload;
+      if (payload && payload.code === "DUPLICATE_KEY" && Array.isArray(payload.errors)) {
+        const newFieldErrors: Partial<Record<string, string>> = {};
+        for (const e of payload.errors) {
+          // backend field names: 'cedula' or 'email'
+          if (e.field === 'cedula') newFieldErrors.cedula = e.message || 'La cédula ya está registrada.';
+          if (e.field === 'email') newFieldErrors.correo = e.message || 'El correo ya está registrado.';
+        }
+        setFieldErrors((prev) => ({ ...prev, ...newFieldErrors }));
+        // also show a general message from payload if present
+      } 
     } finally {
       setIsSubmitting(false);
     }
@@ -266,6 +315,7 @@ export const Form = ({ onBack, initialData }: FormProps) => {
                     return copy
                   })
                 }}
+                rightSlot={formData.fechaNacimiento ? `Edad : ${calculateAge(formData.fechaNacimiento)}` : undefined}
               />
               {fieldErrors.fechaNacimiento && (
                 <small style={{ color: 'red', fontSize: '0.875rem' }}>{fieldErrors.fechaNacimiento}</small>
