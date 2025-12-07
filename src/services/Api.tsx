@@ -9,6 +9,8 @@ export interface Persona {
   direccion?: string;
   createdAt?: string;
   updatedAt?: string;
+  // attendance context for a given fecha (if provided to getPersonas)
+  asistio?: boolean;
 }
 
 export interface Actividad {
@@ -32,8 +34,15 @@ export interface PaginatedResponse<T> {
 export interface GetPersonasParams {
   cedula?: string;
   nombreCompleto?: string;
+  // pagination controls
   currentPage?: number;
   limit?: number;
+  // whether to apply pagination (true by default in backend)
+  paginado?: boolean;
+  // attendance context date (YYYY-MM-DD)
+  fecha?: string;
+  // informative flag coupled with fecha; does not filter but may be echoed
+  registrada?: 'si' | 'no';
 }
 
 export interface CreatePersonaPayload {
@@ -107,12 +116,18 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 export async function getPersonas(
   params: GetPersonasParams = {}
 ): Promise<PaginatedResponse<Persona>> {
-  const { cedula, nombreCompleto, currentPage, limit } = params;
+  const { cedula, nombreCompleto, currentPage, limit, paginado, fecha, registrada } = params;
   const searchParams = new URLSearchParams();
-  if (cedula) searchParams.set("cedula", cedula);
+  // cedula: backend expects numeric; send as-is if numeric string
+  if (cedula) searchParams.set("cedula", String(cedula).replace(/\D/g, ''));
   if (nombreCompleto) searchParams.set("nombreCompleto", nombreCompleto);
-  if (currentPage) searchParams.set("currentPage", String(currentPage));
-  if (limit) searchParams.set("limit", String(limit));
+  // pagination defaults: currentPage=1, limit=10 (backend defaults). Only send if provided.
+  if (typeof currentPage === 'number') searchParams.set("currentPage", String(currentPage));
+  if (typeof limit === 'number') searchParams.set("limit", String(limit));
+  if (typeof paginado === 'boolean') searchParams.set("paginado", paginado ? 'true' : 'false');
+  // attendance context
+  if (fecha) searchParams.set("fecha", fecha);
+  if (registrada) searchParams.set("registrada", registrada);
 
   const qp = searchParams.toString();
   const res = await request<ApiEnvelope<PaginatedResponse<Persona>> | Persona[]>(`/personas${qp ? `?${qp}` : ""}`);

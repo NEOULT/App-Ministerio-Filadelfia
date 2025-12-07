@@ -24,6 +24,9 @@ export const AsistenceModal = ({ onRegisterRedirect, actividadId }: AsistenceMod
   const [notRegistered, setNotRegistered] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [foundPerson, setFoundPerson] = useState<Persona | null>(null);
+  const [results, setResults] = useState<Persona[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [searchMode, setSearchMode] = useState<"cedula"|"nombre"|null>(null);
   const [lastRegistered, setLastRegistered] = useState<boolean | undefined>(undefined);
 
   const extractAsistirResult = (resp: unknown) => {
@@ -41,6 +44,9 @@ export const AsistenceModal = ({ onRegisterRedirect, actividadId }: AsistenceMod
     return { registered: undefined as boolean | undefined, message: undefined as string | undefined };
   };
 
+  const safeStr = (v: unknown) => (typeof v === 'string' ? v : '');
+  // no-op helper removed (unused)
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const q = cedula.trim()
@@ -50,17 +56,31 @@ export const AsistenceModal = ({ onRegisterRedirect, actividadId }: AsistenceMod
     setNotRegistered(false)
     try {
       const isNumeric = /^\d+$/.test(q)
+      setSearchMode(isNumeric ? 'cedula' : 'nombre')
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      const fechaHoy = `${yyyy}-${mm}-${dd}`;
       const params = isNumeric ? { cedula: q } : { nombreCompleto: q }
-      const res = await getPersonas(params)
-      const persons = Array.isArray(res.data) ? res.data : []
+      const res = await getPersonas({ ...params, paginado: false, fecha: fechaHoy })
+      const persons = Array.isArray(res.data) ? res.data as Persona[] : []
       if (persons.length > 0) {
-        // show only the first matching record and wait for user confirmation to mark attendance
-        const persona = persons[0] as Persona
-        setFoundPerson(persona)
+        if (isNumeric) {
+          // For cedula searches, show the single "Persona encontrada" panel
+          setFoundPerson(persons[0])
+          setResults([])
+        } else {
+          // For nombre searches, show the list of coincidences
+          setResults(persons)
+          setFoundPerson(null)
+        }
         setMessage(null)
       } else {
         // not registered: prepare redirect to form with prefill
         setNotRegistered(true)
+        setResults([])
+        setFoundPerson(null)
         setMessage('No se encontró una persona con esos datos.')
       }
     } catch (err) {
@@ -115,14 +135,23 @@ export const AsistenceModal = ({ onRegisterRedirect, actividadId }: AsistenceMod
         }
         actividadToUse = list[0]._id
       }
-      const resp = await asistirActividad(actividadToUse, persona._id)
-      const { registered: registeredFlag, message: backendMsg } = extractAsistirResult(resp)
-      console.debug('asistirActividad response:', { resp, registeredFlag, backendMsg })
+      const apiResp = await asistirActividad(actividadToUse, persona._id)
+      const { registered: registeredFlag, message: backendMsg } = extractAsistirResult(apiResp)
       setLastRegistered(registeredFlag as boolean | undefined)
       const pObj = persona as unknown as Record<string, unknown>
-      const displayName = typeof pObj.nombreCompleto === 'string'
-        ? pObj.nombreCompleto
-        : `${String(pObj.nombre ?? '')} ${String(pObj.apellido ?? '')}`.trim()
+      let displayName = '';
+      if (typeof pObj.nombreCompleto === 'string' && pObj.nombreCompleto) {
+        displayName = pObj.nombreCompleto as string;
+      } else {
+        const first = safeStr(pObj.nombre);
+        const last = safeStr(pObj.apellido);
+        displayName = [first, last].filter(Boolean).join(' ');
+      }
+      // Regardless of backend registered flag, reflect asistencia locally
+      const personaAny = persona as unknown as { asistio?: boolean };
+      personaAny.asistio = true;
+      // Also update in results list if present
+      setResults(prev => prev.map(r => r._id === persona._id ? { ...r, asistio: true } as Persona : r));
       if (registeredFlag === false) {
         setMessage(backendMsg || `La persona ${displayName || persona._id} ya estaba registrada para esta clase.`)
         setShowSuccess(true)
@@ -138,6 +167,54 @@ export const AsistenceModal = ({ onRegisterRedirect, actividadId }: AsistenceMod
       setFoundPerson(null)
     }
   }
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const markSelected = async () => {
+    if (selectedIds.size === 0) return;
+    setIsLoading(true);
+    setMessage(null);
+    try {
+      let actividadToUse: string | undefined = actividadId;
+      if (!actividadToUse) {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        const fechaHoy = `${yyyy}-${mm}-${dd}`;
+        const actividades = await getActividadesSemana({ fecha: fechaHoy });
+        const list = Array.isArray(actividades) ? actividades : [];
+        if (list.length === 0) {
+          setMessage('No hay actividades programadas para hoy.');
+          return;
+        }
+        actividadToUse = list[0]._id;
+      }
+      const updated: Persona[] = [...results];
+      for (const id of Array.from(selectedIds)) {
+        const p = updated.find(r => r._id === id);
+        if (!p) continue;
+          await asistirActividad(actividadToUse!, id);
+        // mark as attended locally regardless of flag so UI shows check
+        (p as unknown as Record<string, unknown>).asistio = true;
+      }
+      setResults(updated);
+      setSelectedIds(new Set());
+      setMessage('Asistencia registrada para seleccionados.');
+      setShowSuccess(true);
+    } catch (err) {
+      console.error('Error marcando asistencia múltiple:', err);
+      setMessage('No se pudo registrar la asistencia para todos.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <>
@@ -159,15 +236,66 @@ export const AsistenceModal = ({ onRegisterRedirect, actividadId }: AsistenceMod
           </AlertDialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-6 mt-4">
-            <Input
-              label="Cédula de Identidad o"
-              type="text"
-              value={cedula}
-              onChange={(e) => setCedula(e.target.value)}
-              placeholder="V-12345678 ó Juan Pérez"
-              required
-            />
-            {!foundPerson ? (
+            <div className="space-y-2">
+              <div className="flex gap-2 items-end">
+                <div className="flex-1">
+                  <Input
+                    label="Cédula de Identidad o nombre completo"
+                    type="text"
+                    value={cedula}
+                    onChange={(e) => setCedula(e.target.value)}
+                    placeholder="V-12345678 ó Juan Pérez"
+                    required
+                  />
+                </div>
+                <Button type="submit" style={{ backgroundColor: '#2768F5', color: '#ffffff' }}>
+                  {isLoading ? 'Buscando...' : 'Buscar'}
+                </Button>
+              </div>
+            </div>
+            {results.length > 0 && searchMode === 'nombre' ? (
+              <div className="mt-2">
+                <h4 className="font-semibold mb-2">Coincidencias</h4>
+                <div className="max-h-56 overflow-y-auto border rounded">
+                  {results.map((p) => {
+                    const pObj = p as unknown as Record<string, unknown>
+                    const firstR = safeStr(pObj.nombre);
+                    const lastR = safeStr(pObj.apellido);
+                    const nombre = typeof pObj.nombreCompleto === 'string' && pObj.nombreCompleto
+                      ? (pObj.nombreCompleto as string)
+                      : [firstR, lastR].filter(Boolean).join(' ');
+                    const ced = typeof pObj.cedula === 'string' ? pObj.cedula : ''
+                    const asistio = Boolean((pObj as Record<string, unknown>).asistio);
+                    return (
+                      <div key={p._id} className={`flex items-center justify-between px-3 py-2 border-b last:border-b-0 ${asistio ? 'opacity-60' : ''}`}>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">{nombre || '-'}</p>
+                          {ced && <p className="text-xs text-gray-500 truncate">{ced}</p>}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {asistio ? (
+                            <span className="text-green-600" title="Asistió">✓</span>
+                          ) : (
+                            <input
+                              type="checkbox"
+                              checked={selectedIds.has(p._id)}
+                              onChange={() => toggleSelect(p._id)}
+                              className="h-4 w-4"
+                            />
+                          )}
+                          {/* No 'Seleccionar' button in nombre search results */}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+                <div className="flex justify-end mt-3">
+                  <Button type="button" onClick={markSelected} disabled={selectedIds.size === 0} style={{ backgroundColor: '#2768F5', color: '#fff' }}>
+                    {isLoading ? 'Procesando...' : `Marcar asistencia (${selectedIds.size})`}
+                  </Button>
+                </div>
+              </div>
+            ) : (
               <>
                 {message && <p className="text-sm text-gray-700">{message}</p>}
                 {notRegistered && (
@@ -177,15 +305,24 @@ export const AsistenceModal = ({ onRegisterRedirect, actividadId }: AsistenceMod
                   </div>
                 )}
               </>
-            ) : (
+            )}
+            {foundPerson && searchMode === 'cedula' && (
               <div className="border rounded p-3 bg-gray-50">
                 <h4 className="font-semibold">Persona encontrada</h4>
                 {(() => {
                   const pObj = foundPerson as unknown as Record<string, unknown>
-                  const nombre = typeof pObj.nombreCompleto === 'string' ? pObj.nombreCompleto : `${String(pObj.nombre ?? '')} ${String(pObj.apellido ?? '')}`.trim()
+                  const firstF = safeStr(pObj.nombre);
+                  const lastF = safeStr(pObj.apellido);
+                  const nombre = typeof pObj.nombreCompleto === 'string' && pObj.nombreCompleto
+                    ? (pObj.nombreCompleto as string)
+                    : [firstF, lastF].filter(Boolean).join(' ');
+                  const asistio = Boolean((pObj as Record<string, unknown>).asistio);
                   return (
                     <>
-                      <p className="text-sm text-gray-700">{nombre || '-'}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm text-gray-700">{nombre || '-'}</p>
+                        {asistio && <span className="text-green-600" title="Asistió">✓</span>}
+                      </div>
                     </>
                   )
                 })()}
@@ -193,9 +330,20 @@ export const AsistenceModal = ({ onRegisterRedirect, actividadId }: AsistenceMod
                   <Button type="button" variant="outline" onClick={() => { setFoundPerson(null); setMessage(null); setNotRegistered(false); }}>
                     Buscar otra
                   </Button>
-                  <Button type="button" onClick={() => handleConfirmMark(foundPerson)} style={{ backgroundColor: '#2768F5', color: '#fff' }}>
-                    {isLoading ? 'Procesando...' : 'Marcar asistencia'}
-                  </Button>
+                  {(() => {
+                    const pObj = foundPerson as unknown as Record<string, unknown>;
+                    const asistio = Boolean((pObj as Record<string, unknown>).asistio);
+                    return (
+                      <Button
+                        type="button"
+                        onClick={() => handleConfirmMark(foundPerson)}
+                        disabled={asistio}
+                        style={{ backgroundColor: asistio ? '#93c5fd' : '#2768F5', color: '#fff' }}
+                      >
+                        {isLoading ? 'Procesando...' : (asistio ? 'Ya asistió' : 'Marcar asistencia')}
+                      </Button>
+                    );
+                  })()}
                 </div>
               </div>
             )}
