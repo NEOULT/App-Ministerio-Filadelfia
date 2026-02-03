@@ -11,6 +11,11 @@ export interface Persona {
   updatedAt?: string;
   // attendance context for a given fecha (if provided to getPersonas)
   asistio?: boolean;
+  bautizado?: boolean;
+  genero?: string;
+  ministerio?: string;
+  nivel_academico?: string;
+  ocupacion?: string;
 }
 
 export interface Actividad {

@@ -45,10 +45,15 @@ export default function PersonasList() {
             ? obj.fecha_nacimiento
             : (typeof obj.fechaNacimiento === 'string' ? obj.fechaNacimiento : undefined),
           direccion: typeof obj.direccion === 'string' ? obj.direccion : undefined,
+          bautizado: typeof obj.bautizado === 'boolean' ? obj.bautizado : undefined,
+          genero: typeof obj.genero === 'string' ? obj.genero : undefined,
+          ministerio: typeof obj.ministerio === 'string' ? obj.ministerio : undefined,
+          nivel_academico: typeof obj.nivel_academico === 'string' ? obj.nivel_academico : undefined,
+          ocupacion: typeof obj.ocupacion === 'string' ? obj.ocupacion : undefined,
           createdAt: typeof obj.createdAt === 'string' ? obj.createdAt : undefined,
           updatedAt: typeof obj.updatedAt === 'string' ? obj.updatedAt : undefined,
         } as Persona;
-  });
+      });
       setList(normalized);
   setTotalItems(((data as PaginatedResponse<Persona>)?.totalItems) || normalized.length);
     } catch (err) {
@@ -204,8 +209,9 @@ export default function PersonasList() {
           backgroundColor: '#ffffff',
           boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
         }}>
-          <div style={{ overflowX: 'auto' }}>
+          <div style={{ overflowX: 'auto', width: '100%' }}>
             <table style={{
+              minWidth: '1200px',
               width: '100%',
               borderCollapse: 'collapse',
               fontSize: '0.875rem'
@@ -272,6 +278,12 @@ export default function PersonasList() {
                       Teléfono
                     </div>
                   </th>
+                  <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Bautizado</th>
+                  <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Género</th>
+                  <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Ministerio</th>
+                  <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Nivel académico</th>
+                  <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Ocupación</th>
+                  <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Fecha nacimiento</th>
                 </tr>
               </thead>
               <tbody>
@@ -319,6 +331,24 @@ export default function PersonasList() {
                       fontFamily: 'monospace'
                     }}>
                       {persona.telefono || '-'}
+                    </td>
+                    <td style={{ padding: '14px 16px', color: '#6b7280' }}>
+                      {typeof persona.bautizado === 'boolean' ? (persona.bautizado ? 'Sí' : 'No') : '-'}
+                    </td>
+                    <td style={{ padding: '14px 16px', color: '#6b7280' }}>
+                      {persona.genero || '-'}
+                    </td>
+                    <td style={{ padding: '14px 16px', color: '#6b7280', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {persona.ministerio || '-'}
+                    </td>
+                    <td style={{ padding: '14px 16px', color: '#6b7280' }}>
+                      {persona.nivel_academico || '-'}
+                    </td>
+                    <td style={{ padding: '14px 16px', color: '#6b7280' }}>
+                      {persona.ocupacion || '-'}
+                    </td>
+                    <td style={{ padding: '14px 16px', color: '#6b7280' }}>
+                      {persona.fechaNacimiento ? new Date(persona.fechaNacimiento).toLocaleDateString() : '-'}
                     </td>
                   </tr>
                 ))}
