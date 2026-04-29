@@ -3,6 +3,7 @@ import { getPersonas, type Persona, type PaginatedResponse } from '../../service
 import { Input } from '../Input/Input'
 import { Button } from '../ui/button'
 import { Search, X, RefreshCw, User, Mail, Phone, IdCard } from 'lucide-react'
+import { formatDateStringForDisplay } from '@/lib/utils'
 
 export default function PersonasList() {
   const [list, setList] = useState<Persona[]>([])
@@ -348,7 +349,7 @@ export default function PersonasList() {
                       {persona.ocupacion || '-'}
                     </td>
                     <td style={{ padding: '14px 16px', color: '#6b7280' }}>
-                      {persona.fechaNacimiento ? new Date(persona.fechaNacimiento).toLocaleDateString() : '-'}
+                      {formatDateStringForDisplay(persona.fechaNacimiento)}
                     </td>
                   </tr>
                 ))}
