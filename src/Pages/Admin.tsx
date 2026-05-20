@@ -1,14 +1,59 @@
+// src/Pages/Admin.tsx
 import { useEffect, useState } from 'react'
-import ClaseForm from '@/components/ClassForm/ClassForm'
-import ClasesList from '@/components/ClassList/ClassList'
-import { Button } from '@/components/ui/button'
-import { Users, GraduationCap, Home } from 'lucide-react'
-import PersonaList from '@/components/PersonaList/PersonaList'
+import { type Persona } from '@/components/Admin/peopleTable/peopleTable'
+import { usePersonas } from '@/hooks/usePersonas'
+import { useStatistics } from '@/hooks/useStatistics'
+import { getCurrentMonthRange } from '@/utils/dateUtils'
+import { 
+  getNombreCompleto, 
+  calcularEdad, 
+  formatearTelefono, 
+  formatearGenero, 
+  formatearFecha, 
+  formatearBautizado 
+} from '@/components/Admin/peopleTable/utils/personUtils'
+import AdminLayout from '@/components/Admin/AdminLayout/AdminLayout'
+import AdminHeader from '@/components/Admin/AdminHeader/AdminHeader'
+import AdminTabs from '@/components/Admin/AdminTabs/AdminTabs'
+import DashboardView from '@/components/Admin/DashboardView/DashboardView'
+import JovenesView from '@/components/Admin/JovenesView/JovenesView'
+import ClasesView from '@/components/Admin/ClasesView/ClasesView'
+import ViewPersonModal from '@/components/Admin/Modals/ViewPersonModal'
+import EditPersonModal from '@/components/Admin/Modals/EditPersonModal'
+import DeletePersonModal from '@/components/Admin/Modals/DeletePersonModal'
+
+type Column<T> = {
+  key: keyof T | string
+  label: string
+  align?: 'left' | 'center' | 'right'
+  render?: (value: unknown, row: T) => React.ReactNode
+}
 
 export default function Admin() {
   const SECRET_ADMIN_HASH = '#/__sigma-astral-portal__c3d4e2-4f10'
   const [hash, setHash] = useState(window.location.hash)
   const [reload, setReload] = useState(0)
+  
+  // Estados para modales
+  const [selectedPersona, setSelectedPersona] = useState<Persona | null>(null)
+  const [modalView, setModalView] = useState<'view' | 'edit' | 'delete' | null>(null)
+  
+  // Obtener rango del mes actual
+  const { from, to } = getCurrentMonthRange()
+  
+  // Hooks para datos
+  const {
+    personas,
+    loading: loadingPersonas,
+    searchPersonas,
+    refreshPersonas
+  } = usePersonas()
+  
+  const {
+    estadisticas,
+    loading: loadingEstadisticas,
+    refreshEstadisticas
+  } = useStatistics(from, to)
 
   useEffect(() => {
     const onHashChange = () => setHash(window.location.hash)
@@ -17,151 +62,193 @@ export default function Admin() {
   }, [])
 
   const getSection = () => {
-    if (!hash.startsWith(SECRET_ADMIN_HASH)) return 'jovenes'
+    if (!hash.startsWith(SECRET_ADMIN_HASH)) return 'dashboard'
     const rest = hash.slice(SECRET_ADMIN_HASH.length) || ''
     const clean = rest.startsWith('/') ? rest.slice(1) : rest
     if (clean.startsWith('clases')) return 'clases'
     if (clean.startsWith('jovenes') || clean.startsWith('personas')) return 'jovenes'
-    return 'jovenes'
+    if (clean === '' || clean === 'dashboard') return 'dashboard'
+    return 'dashboard'
   }
 
   const section = getSection()
 
+  // Columnas para la tabla de jóvenes
+  const personColumns: Column<Persona>[] = [
+    { 
+      key: 'nombreCompleto', 
+      label: 'Nombre y apellido', 
+      align: 'left',
+      render: (_, row) => getNombreCompleto(row)
+    },
+    { 
+      key: 'cedula', 
+      label: 'Cédula', 
+      align: 'center',
+      render: (value) => (value as number)?.toString() || '-'
+    },
+    { 
+      key: 'telefono', 
+      label: 'Teléfono', 
+      align: 'center',
+      render: (_, row) => formatearTelefono(row.telefono)
+    },
+    { 
+      key: 'edad', 
+      label: 'Edad', 
+      align: 'center',
+      render: (_, row) => {
+        const edad = calcularEdad(row.fecha_nacimiento)
+        return edad !== null ? edad.toString() : '-'
+      }
+    },
+    { 
+      key: 'genero', 
+      label: 'Género', 
+      align: 'center',
+      render: (_, row) => formatearGenero(row.genero)
+    },
+    { 
+      key: 'fecha_nacimiento', 
+      label: 'Fecha Nac.', 
+      align: 'center',
+      render: (_, row) => formatearFecha(row.fecha_nacimiento)
+    },
+    { 
+      key: 'bautizado', 
+      label: 'Bautizado', 
+      align: 'center',
+      render: (_, row) => formatearBautizado(row.bautizado)
+    },
+    { 
+      key: 'ministerio', 
+      label: 'Ministerio', 
+      align: 'center',
+      render: (value) => (value as string) || '-'
+    }
+  ]
+
+  const handleOnView = (persona: Persona) => {
+    setSelectedPersona(persona)
+    setModalView('view')
+  }
+
+  const handleEdit = (persona: Persona) => {
+    setSelectedPersona(persona)
+    setModalView('edit')
+  }
+
+  const handleDelete = (persona: Persona) => {
+    setSelectedPersona(persona)
+    setModalView('delete')
+  }
+
+  const handleSaveEdit = async (updatedData: Partial<Persona>) => {
+    try {
+      // Aquí llamas a tu API para actualizar
+      console.log('Guardando cambios:', updatedData)
+      // await updatePersona(selectedPersona?._id, updatedData)
+      
+      // Recargar datos después de actualizar
+      await refreshPersonas()
+      await refreshEstadisticas()
+    } catch (error) {
+      console.error('Error al guardar:', error)
+      throw error
+    }
+  }
+
+  const handleConfirmDelete = async () => {
+    try {
+      // Aquí llamas a tu API para eliminar
+      console.log('Eliminando:', selectedPersona)
+      // await deletePersona(selectedPersona?._id)
+      
+      // Recargar datos después de eliminar
+      await refreshPersonas()
+      await refreshEstadisticas()
+    } catch (error) {
+      console.error('Error al eliminar:', error)
+      throw error
+    }
+  }
+
+  const closeModal = () => {
+    setModalView(null)
+    setSelectedPersona(null)
+  }
+
+  const handleExport = () => {
+    console.log('Exportar datos')
+  }
+
+  const handleFilter = () => {
+    console.log('Abrir filtros')
+  }
+
+  const handleCreate = () => {
+    console.log('Crear nuevo registro')
+  }
+
+  const handleRefresh = () => {
+    refreshPersonas()
+    refreshEstadisticas()
+  }
+
   return (
-    <div style={{ 
-      maxWidth: '1200px', 
-      width: '100%',
-      margin: '0 auto',
-      boxSizing: 'border-box'
-    }}>
-      {/* Header */}
-      <div style={{
-        backgroundColor: '#ffffff',
-        borderRadius: '12px',
-        padding: '24px',
-        marginBottom: '24px',
-        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-        border: '1px solid #e5e7eb'
-      }}>
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div>
-            <h1 style={{ margin: 0, fontSize: '1.875rem', fontWeight: 700, color: '#1f2937' }}>
-              Panel de Administración
-            </h1>
-            <p style={{ margin: '8px 0 0 0', color: '#6b7280', fontSize: '0.875rem' }}>
-              Gestiona jóvenes y clases de la iglesia
-            </p>
-          </div>
-          <Button
-            variant="outline"
-            onClick={() => window.location.hash = '#/'}
-          >
-            <Home className="h-4 w-4 mr-2" />
-            Volver al Inicio
-          </Button>
-        </div>
-      </div>
+    <>
+      <AdminLayout>
+        <AdminHeader />
+        <AdminTabs currentSection={section} secretHash={SECRET_ADMIN_HASH} />
+        
+        {section === 'dashboard' && (
+          <DashboardView
+            personas={personas}
+            estadisticas={estadisticas}
+            loadingEstadisticas={loadingEstadisticas}
+            loadingPersonas={loadingPersonas}
+            personColumns={personColumns}
+            onView={handleOnView}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onSearch={searchPersonas}
+            onExport={handleExport}
+            onFilter={handleFilter}
+            onCreate={handleCreate}
+            onRefresh={handleRefresh}
+          />
+        )}
+        
+        {section === 'jovenes' && <JovenesView />}
+        
+        {section === 'clases' && (
+          <ClasesView 
+            reloadSignal={reload} 
+            onReload={() => setReload(r => r + 1)} 
+          />
+        )}
+      </AdminLayout>
 
-      {/* Navigation Tabs */}
-      <nav style={{
-        backgroundColor: '#ffffff',
-        borderRadius: '12px',
-        padding: '8px',
-        marginBottom: '24px',
-        display: 'flex',
-        gap: '8px',
-        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-        border: '1px solid #e5e7eb'
-      }}>
-        <a
-          href={`${SECRET_ADMIN_HASH}/jovenes`}
-          style={{
-            textDecoration: 'none',
-            padding: '10px 20px',
-            borderRadius: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            fontSize: '0.875rem',
-            fontWeight: 500,
-            transition: 'all 0.15s',
-            backgroundColor: section === 'jovenes' ? '#dbeafe' : 'transparent',
-            color: section === 'jovenes' ? '#1e40af' : '#6b7280'
-          }}
-          onMouseEnter={(e) => {
-            if (section !== 'jovenes') {
-              e.currentTarget.style.backgroundColor = '#f3f4f6'
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (section !== 'jovenes') {
-              e.currentTarget.style.backgroundColor = 'transparent'
-            }
-          }}
-        >
-          <Users className="h-4 w-4" />
-          Jóvenes
-        </a>
-        <a
-          href={`${SECRET_ADMIN_HASH}/clases`}
-          style={{
-            textDecoration: 'none',
-            padding: '10px 20px',
-            borderRadius: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            fontSize: '0.875rem',
-            fontWeight: 500,
-            transition: 'all 0.15s',
-            backgroundColor: section === 'clases' ? '#dbeafe' : 'transparent',
-            color: section === 'clases' ? '#1e40af' : '#6b7280'
-          }}
-          onMouseEnter={(e) => {
-            if (section !== 'clases') {
-              e.currentTarget.style.backgroundColor = '#f3f4f6'
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (section !== 'clases') {
-              e.currentTarget.style.backgroundColor = 'transparent'
-            }
-          }}
-        >
-          <GraduationCap className="h-4 w-4" />
-          Clases
-        </a>
-      </nav>
-
-      {/* Content */}
-      {section === 'jovenes' && (
-        <section style={{
-          backgroundColor: '#ffffff',
-          borderRadius: '12px',
-          padding: '24px',
-          width: '100%',
-          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-          border: '1px solid #e5e7eb'
-        }}>
-          <PersonaList />
-        </section>
-      )}
-
-      {section === 'clases' && (
-        <section style={{
-          backgroundColor: '#ffffff',
-          borderRadius: '12px',
-          padding: '24px',
-          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-          border: '1px solid #e5e7eb'
-        }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <ClaseForm onCreated={() => setReload(r => r + 1)} />
-            <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', margin: 0 }} />
-            <ClasesList reloadSignal={reload} />
-          </div>
-        </section>
-      )}
-    </div>
+      {/* Modales */}
+      <ViewPersonModal
+        isOpen={modalView === 'view'}
+        onClose={closeModal}
+        persona={selectedPersona}
+      />
+      
+      <EditPersonModal
+        isOpen={modalView === 'edit'}
+        onClose={closeModal}
+        persona={selectedPersona}
+        onSave={handleSaveEdit}
+      />
+      
+      <DeletePersonModal
+        isOpen={modalView === 'delete'}
+        onClose={closeModal}
+        persona={selectedPersona}
+        onConfirm={handleConfirmDelete}
+      />
+    </>
   )
 }

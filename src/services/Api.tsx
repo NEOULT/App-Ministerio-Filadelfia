@@ -13,6 +13,13 @@ export interface Persona {
   asistio?: boolean;
 }
 
+export interface EstadisticasResponse {
+  personasConMasDe2Faltas: number
+  totalAsistentes: number
+  promedioAsistenciaSemanal: number
+  promedioAsistenciaMensual: number
+}
+
 export interface Actividad {
   _id: string;
   titulo: string;
@@ -92,7 +99,7 @@ interface ApiEnvelope<T = unknown> {
   [key: string]: unknown;
 }
 
-const API_BASE = "https://backend01-proyecto-jovenes-phru.vercel.app";
+const API_BASE = "http://localhost:3000";
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
@@ -124,14 +131,14 @@ export async function getPersonas(
   // pagination defaults: currentPage=1, limit=10 (backend defaults). Only send if provided.
   if (typeof currentPage === 'number') searchParams.set("currentPage", String(currentPage));
   if (typeof limit === 'number') searchParams.set("limit", String(limit));
-  if (typeof paginado === 'boolean') searchParams.set("paginado", paginado ? 'true' : 'false');
+  if (typeof paginado === 'boolean') searchParams.set("paginado", paginado ? 'si' : 'no');
   // attendance context
   if (fecha) searchParams.set("fecha", fecha);
   if (registrada) searchParams.set("registrada", registrada);
 
   const qp = searchParams.toString();
   const res = await request<ApiEnvelope<PaginatedResponse<Persona>> | Persona[]>(`/personas${qp ? `?${qp}` : ""}`);
-
+  
   // If backend returned an envelope with .data (paginated), return it
   if (res && typeof res === 'object' && Array.isArray((res as ApiEnvelope).data)) {
     return (res as ApiEnvelope<PaginatedResponse<Persona>>).data as PaginatedResponse<Persona>;
@@ -214,6 +221,16 @@ export async function asistirActividad(
   });
   // return the envelope so callers can inspect 'registered' and 'message'
   return res as ApiEnvelope<AsistenciaResponse>;
+}
+
+export async function getEstadisticas(from?: string, to?: string): Promise<EstadisticasResponse> {
+  const searchParams = new URLSearchParams()
+  if (from) searchParams.set('from', from)
+  if (to) searchParams.set('to', to)
+  
+  const qp = searchParams.toString()
+  const res = await request<EstadisticasResponse>(`/personas/statistics${qp ? `?${qp}` : ''}`)
+  return res
 }
 
 export default {
