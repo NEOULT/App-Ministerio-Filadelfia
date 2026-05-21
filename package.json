@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "flatten:src": "node scripts/flatten-src.js",
+    "flatten:src:dry": "node scripts/flatten-src.js --dry-run"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.15",
