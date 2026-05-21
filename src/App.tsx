@@ -71,7 +71,7 @@ export default function App() {
     return (
       <main style={{
         minHeight: '100vh',
-        width: '100vw',
+        width: '100%',
         backgroundColor: '#f3f4f6',
         padding: '24px 16px',
         boxSizing: 'border-box',
