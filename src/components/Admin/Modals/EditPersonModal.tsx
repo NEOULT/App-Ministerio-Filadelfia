@@ -195,6 +195,11 @@ export default function EditPersonModal({ isOpen, onClose, persona, onSave }: Ed
           grid-template-columns: 1fr 1fr;
           gap: 16px;
         }
+        @media (max-width: 480px) {
+          .form-row {
+            grid-template-columns: 1fr;
+          }
+        }
         .form-group {
           display: flex;
           flex-direction: column;
@@ -224,6 +229,14 @@ export default function EditPersonModal({ isOpen, onClose, persona, onSave }: Ed
           padding-top: 16px;
           margin-top: 8px;
           border-top: 1px solid #e5e7eb;
+        }
+        @media (max-width: 480px) {
+          .modal-actions {
+            flex-direction: column;
+          }
+          .modal-actions button {
+            width: 100%;
+          }
         }
         .btn-secondary {
           padding: 8px 20px;
