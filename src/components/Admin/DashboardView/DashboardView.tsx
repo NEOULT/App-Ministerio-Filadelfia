@@ -15,7 +15,8 @@ interface DashboardViewProps {
   personas: Persona[]
   estadisticas: {
     personasConMasDe2Faltas: number
-    totalAsistentes: number
+    totalAsistentesEnPeriodo: number
+    totalPersonasRegistradas: number
     promedioAsistenciaSemanal: number
     promedioAsistenciaMensual: number
   }
@@ -48,8 +49,6 @@ export default function DashboardView({
   personColumns
 }: DashboardViewProps) {
   
-  const totalJovenes = personas.length
-
   // Paleta de colores pastel
   const statsData = [
     {
@@ -67,7 +66,7 @@ export default function DashboardView({
       id: 2,
       title: "Total Jóvenes",
       icon: <Church size={22} strokeWidth={1.5} />,
-      value: totalJovenes,
+      value: estadisticas.totalPersonasRegistradas,
       description: "Jóvenes registrados en la base de datos",
       backgroundColor: "#e8eaf6",
       iconColor: "#5c6bc0",
