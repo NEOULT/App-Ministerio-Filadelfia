@@ -32,7 +32,7 @@ export default function ViewPersonModal({ isOpen, onClose, persona }: ViewPerson
 
         <div className="info-group">
           <label>Email</label>
-          <p>{persona.email || '-'}</p>
+          <p className="email-wrap">{persona.email || '-'}</p>
         </div>
 
         <div className="info-row">
@@ -57,20 +57,20 @@ export default function ViewPersonModal({ isOpen, onClose, persona }: ViewPerson
           </div>
         </div>
 
-        <div className="info-row">
-          <div className="info-group">
-            <label>Ministerio</label>
-            <p>{persona.ministerio || '-'}</p>
-          </div>
-          <div className="info-group">
-            <label>Nivel académico</label>
-            <p>{persona.nivel_academico || '-'}</p>
-          </div>
+        {/* Campos de texto libre en fila separada o ancho completo */}
+        <div className="info-group-full">
+          <label>Ministerio</label>
+          <p className="text-wrap">{persona.ministerio || '-'}</p>
         </div>
 
-        <div className="info-group">
+        <div className="info-group-full">
+          <label>Nivel académico</label>
+          <p className="text-wrap">{persona.nivel_academico || '-'}</p>
+        </div>
+
+        <div className="info-group-full">
           <label>Ocupación</label>
-          <p>{persona.ocupacion || '-'}</p>
+          <p className="text-wrap">{persona.ocupacion || '-'}</p>
         </div>
 
         <div className="modal-actions">
@@ -91,19 +91,35 @@ export default function ViewPersonModal({ isOpen, onClose, persona }: ViewPerson
           flex-direction: column;
           gap: 4px;
         }
-        .info-group label {
+        .info-group-full {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+        .info-group label, .info-group-full label {
           font-size: 0.75rem;
           font-weight: 600;
           color: #6b7280;
           text-transform: uppercase;
           letter-spacing: 0.5px;
         }
-        .info-group p {
+        .info-group p, .info-group-full p {
           margin: 0;
           font-size: 0.875rem;
           color: #1f2937;
           padding: 8px 0;
           border-bottom: 1px solid #f3f4f6;
+        }
+        /* Para texto largo */
+        .text-wrap {
+          word-wrap: break-word;
+          white-space: normal;
+          word-break: break-word;
+        }
+        /* Para emails */
+        .email-wrap {
+          word-wrap: break-word;
+          word-break: break-all;
         }
         .info-row {
           display: grid;
@@ -129,6 +145,14 @@ export default function ViewPersonModal({ isOpen, onClose, persona }: ViewPerson
         }
         .btn-secondary:hover {
           background: #e5e7eb;
+        }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+          .info-row {
+            grid-template-columns: 1fr;
+            gap: 12px;
+          }
         }
       `}</style>
     </Modal>
