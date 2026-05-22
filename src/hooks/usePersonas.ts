@@ -11,7 +11,7 @@ export function usePersonas(deletedOnly = false) {
   const [filteredPersonas, setFilteredPersonas] = useState<TablePersona[]>([])
 
   const normalizePersona = useCallback((persona: ApiPersona): TablePersona => {
-    const raw = persona as Record<string, unknown>
+    const raw = persona as unknown as Record<string, unknown>
     const nombreCompleto = typeof raw.nombreCompleto === 'string' ? raw.nombreCompleto : ''
     const [nombre = '', ...apellidoParts] = nombreCompleto.split(' ')
     const apellido = apellidoParts.join(' ').trim()

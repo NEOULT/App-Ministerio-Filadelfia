@@ -1,5 +1,5 @@
 // src/components/Admin/StatsCard/StatsCard.tsx
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 
 interface StatsCardProps {
   title: string
@@ -14,7 +14,7 @@ interface StatsCardProps {
 
 // Variable global para controlar qué tooltip está abierto
 let activeTooltipId: string | null = null
-let activeTimeout: NodeJS.Timeout | null = null
+let activeTimeout: ReturnType<typeof setTimeout> | null = null
 
 export default function StatsCard({
   title,
@@ -29,7 +29,6 @@ export default function StatsCard({
   const [showTooltip, setShowTooltip] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const cardId = useRef(`card-${Math.random()}`).current
-  const timeoutRef = useRef<NodeJS.Timeout>()
 
   // Detectar si es mobile
   useEffect(() => {
@@ -44,7 +43,6 @@ export default function StatsCard({
   // Limpiar timeouts al desmontar
   useEffect(() => {
     return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current)
       if (activeTooltipId === cardId) {
         activeTooltipId = null
         if (activeTimeout) clearTimeout(activeTimeout)
@@ -80,7 +78,7 @@ export default function StatsCard({
     }
   }
 
-  const hideThisTooltip = () => {
+  const hideThisTooltip = useCallback(() => {
     setShowTooltip(false)
     if (activeTooltipId === cardId) {
       activeTooltipId = null
@@ -89,7 +87,7 @@ export default function StatsCard({
       clearTimeout(activeTimeout)
       activeTimeout = null
     }
-  }
+  }, [cardId])
 
   // Escuchar evento de cierre global
   useEffect(() => {
@@ -138,7 +136,7 @@ export default function StatsCard({
 
     document.addEventListener('click', handleClickOutside)
     return () => document.removeEventListener('click', handleClickOutside)
-  }, [showTooltip, isMobile])
+  }, [showTooltip, isMobile, hideThisTooltip])
 
   return (
     <div className="stats-card-container" style={{ position: 'relative' }}>
