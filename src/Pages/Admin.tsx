@@ -21,6 +21,10 @@ import ClasesView from '@/components/Admin/ClasesView/ClasesView'
 import ViewPersonModal from '@/components/Admin/Modals/ViewPersonModal'
 import EditPersonModal from '@/components/Admin/Modals/EditPersonModal'
 import DeletePersonModal from '@/components/Admin/Modals/DeletePersonModal'
+import RestorePersonModal from '@/components/Admin/Modals/RestorePersonModal'
+import CreatePersonModal from '@/components/Admin/Modals/CreatePersonModal'
+import type { FiltersState } from '@/components/Admin/peopleTable/FilterDropdown'
+import { updatePersona, softDeletePersona, restorePersona } from '@/services/Api'
 
 type Column<T> = {
   key: keyof T | string
@@ -33,21 +37,24 @@ export default function Admin() {
   const SECRET_ADMIN_HASH = '#/__sigma-astral-portal__c3d4e2-4f10'
   const [hash, setHash] = useState(window.location.hash)
   const [reload, setReload] = useState(0)
+  const [showDeletedOnly, setShowDeletedOnly] = useState(false)
   
   // Estados para modales
   const [selectedPersona, setSelectedPersona] = useState<Persona | null>(null)
-  const [modalView, setModalView] = useState<'view' | 'edit' | 'delete' | null>(null)
+  const [modalView, setModalView] = useState<'view' | 'edit' | 'delete' | 'restore' | null>(null)
+  const [showCreateModal, setShowCreateModal] = useState(false)
   
   // Obtener rango del mes actual
   const { from, to } = getCurrentMonthRange()
   
   // Hooks para datos
+  const personasHook = usePersonas(showDeletedOnly)
   const {
     personas,
     loading: loadingPersonas,
     searchPersonas,
     refreshPersonas
-  } = usePersonas()
+  } = personasHook
   
   const {
     estadisticas,
@@ -119,12 +126,6 @@ export default function Admin() {
       label: 'Bautizado', 
       align: 'center',
       render: (_, row) => formatearBautizado(row.bautizado)
-    },
-    { 
-      key: 'ministerio', 
-      label: 'Ministerio', 
-      align: 'center',
-      render: (value) => (value as string) || '-'
     }
   ]
 
@@ -143,12 +144,18 @@ export default function Admin() {
     setModalView('delete')
   }
 
+  const handleRestore = (persona: Persona) => {
+    setSelectedPersona(persona)
+    setModalView('restore')
+  }
+
   const handleSaveEdit = async (updatedData: Partial<Persona>) => {
     try {
-      // Aquí llamas a tu API para actualizar
-      console.log('Guardando cambios:', updatedData)
-      // await updatePersona(selectedPersona?._id, updatedData)
-      
+      if (!selectedPersona?._id) {
+        throw new Error('No se encontró la persona a actualizar')
+      }
+
+      await updatePersona(selectedPersona._id, updatedData)
       // Recargar datos después de actualizar
       await refreshPersonas()
       await refreshEstadisticas()
@@ -160,15 +167,31 @@ export default function Admin() {
 
   const handleConfirmDelete = async () => {
     try {
-      // Aquí llamas a tu API para eliminar
-      console.log('Eliminando:', selectedPersona)
-      // await deletePersona(selectedPersona?._id)
-      
+      if (!selectedPersona?._id) {
+        throw new Error('No se encontró la persona a eliminar')
+      }
+
+      await softDeletePersona(selectedPersona._id)
       // Recargar datos después de eliminar
       await refreshPersonas()
       await refreshEstadisticas()
     } catch (error) {
       console.error('Error al eliminar:', error)
+      throw error
+    }
+  }
+
+  const handleConfirmRestore = async () => {
+    try {
+      if (!selectedPersona?._id) {
+        throw new Error('No se encontró la persona a restaurar')
+      }
+
+      await restorePersona(selectedPersona._id)
+      await refreshPersonas()
+      await refreshEstadisticas()
+    } catch (error) {
+      console.error('Error al restaurar:', error)
       throw error
     }
   }
@@ -182,12 +205,17 @@ export default function Admin() {
     console.log('Exportar datos')
   }
 
-  const handleFilter = () => {
-    console.log('Abrir filtros')
+  const handleFilter = (filters: FiltersState) => {
+    setShowDeletedOnly(filters.deletedOnly)
   }
 
   const handleCreate = () => {
-    console.log('Crear nuevo registro')
+    setShowCreateModal(true)
+  }
+
+  const handleCreateSuccess = () => {
+    refreshPersonas()
+    refreshEstadisticas()
   }
 
   const handleRefresh = () => {
@@ -211,6 +239,7 @@ export default function Admin() {
             onView={handleOnView}
             onEdit={handleEdit}
             onDelete={handleDelete}
+            onRestore={handleRestore}
             onSearch={searchPersonas}
             onExport={handleExport}
             onFilter={handleFilter}
@@ -248,6 +277,19 @@ export default function Admin() {
         onClose={closeModal}
         persona={selectedPersona}
         onConfirm={handleConfirmDelete}
+      />
+
+      <RestorePersonModal
+        isOpen={modalView === 'restore'}
+        onClose={closeModal}
+        persona={selectedPersona}
+        onConfirm={handleConfirmRestore}
+      />
+
+      <CreatePersonModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSuccess={handleCreateSuccess}
       />
     </>
   )

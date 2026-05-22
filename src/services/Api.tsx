@@ -16,6 +16,8 @@ export interface Persona {
   ministerio?: string;
   nivel_academico?: string;
   ocupacion?: string;
+  isDeleted?: boolean;
+  deletedAt?: string | null;
 }
 
 export interface EstadisticasResponse {
@@ -55,6 +57,8 @@ export interface GetPersonasParams {
   fecha?: string;
   // informative flag coupled with fecha; does not filter but may be echoed
   registrada?: 'si' | 'no';
+  // when true, request the soft-deleted listing
+  deletedOnly?: boolean;
 }
 
 export interface CreatePersonaPayload {
@@ -72,6 +76,10 @@ export interface CreatePersonaPayload {
   ocupacion?: string;
   bautizado?: boolean;
   genero?: string;
+}
+
+export interface UpdatePersonaPayload extends Partial<CreatePersonaPayload> {
+  direccion?: string;
 }
 
 export interface CreateActividadPayload {
@@ -128,7 +136,34 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 export async function getPersonas(
   params: GetPersonasParams = {}
 ): Promise<PaginatedResponse<Persona>> {
-  const { cedula, nombreCompleto, currentPage, limit, paginado, fecha, registrada } = params;
+  const { cedula, nombreCompleto, currentPage, limit, paginado, fecha, registrada, deletedOnly } = params;
+  if (deletedOnly) {
+    const res = await request<ApiEnvelope<PaginatedResponse<Persona>> | Persona[]>(`/personas/deleted`);
+
+    if (res && typeof res === 'object' && Array.isArray((res as ApiEnvelope).data)) {
+      return (res as ApiEnvelope<PaginatedResponse<Persona>>).data as PaginatedResponse<Persona>;
+    }
+
+    if (Array.isArray(res)) {
+      const arr = res as Persona[];
+      return {
+        data: arr,
+        currentPage: 1,
+        totalPages: 1,
+        totalItems: arr.length,
+        limit: arr.length,
+      } as PaginatedResponse<Persona>;
+    }
+
+    return {
+      data: [],
+      currentPage: 1,
+      totalPages: 1,
+      totalItems: 0,
+      limit: 0,
+    };
+  }
+
   const searchParams = new URLSearchParams();
   // cedula: backend expects numeric; send as-is if numeric string
   if (cedula) searchParams.set("cedula", String(cedula).replace(/\D/g, ''));
@@ -182,6 +217,43 @@ export async function createPersona(payload: CreatePersonaPayload): Promise<Pers
   }
   // Fallback: if backend returned the persona directly
   return (res as unknown) as Persona;
+}
+
+export async function updatePersona(
+  id: string,
+  payload: UpdatePersonaPayload
+): Promise<Persona> {
+  if (!id) throw new Error('persona id requerido')
+  const res = await request<ApiEnvelope<Persona>>(`/personas/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  })
+  if (res && typeof res === 'object' && 'data' in res && res.data) {
+    return res.data as Persona
+  }
+  return (res as unknown) as Persona
+}
+
+export async function softDeletePersona(id: string): Promise<Persona> {
+  if (!id) throw new Error('persona id requerido')
+  const res = await request<ApiEnvelope<Persona>>(`/personas/${id}`, {
+    method: 'DELETE',
+  })
+  if (res && typeof res === 'object' && 'data' in res && res.data) {
+    return res.data as Persona
+  }
+  return (res as unknown) as Persona
+}
+
+export async function restorePersona(id: string): Promise<Persona> {
+  if (!id) throw new Error('persona id requerido')
+  const res = await request<ApiEnvelope<Persona>>(`/personas/${id}/restore`, {
+    method: 'PATCH',
+  })
+  if (res && typeof res === 'object' && 'data' in res && res.data) {
+    return res.data as Persona
+  }
+  return (res as unknown) as Persona
 }
 
 export function getActividades(): Promise<Actividad[]> {
@@ -241,6 +313,9 @@ export async function getEstadisticas(from?: string, to?: string): Promise<Estad
 export default {
   getPersonas,
   createPersona,
+  updatePersona,
+  softDeletePersona,
+  restorePersona,
   getActividades,
   createActividad,
   getActividadesSemana,

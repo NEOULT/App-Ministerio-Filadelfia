@@ -2,6 +2,8 @@
 import { Calendar, CalendarDays, Church, RefreshCw, AlertOctagon } from 'lucide-react'
 import StatsCard from '@/components/Admin/StatsCard/StatsCard'
 import PeopleTable, { type Persona } from '@/components/Admin/peopleTable/peopleTable'
+import type { FiltersState } from '@/components/Admin/peopleTable/FilterDropdown'
+import type { EstadisticasResponse } from '@/services/Api'
 import { Button } from '@/components/ui/button'
 
 type Column<T> = {
@@ -13,21 +15,16 @@ type Column<T> = {
 
 interface DashboardViewProps {
   personas: Persona[]
-  estadisticas: {
-    personasConMasDe2Faltas: number
-    totalAsistentesEnPeriodo: number
-    totalPersonasRegistradas: number
-    promedioAsistenciaSemanal: number
-    promedioAsistenciaMensual: number
-  }
+  estadisticas: EstadisticasResponse
   loadingEstadisticas?: boolean
   loadingPersonas?: boolean
   onView?: (persona: Persona) => void  // ← Añadir onView
   onEdit: (persona: Persona) => void
   onDelete: (persona: Persona) => void
+  onRestore: (persona: Persona) => void
   onSearch: (searchTerm: string) => void
   onExport: () => void
-  onFilter: () => void
+  onFilter: (filters: FiltersState) => void
   onCreate: () => void
   onRefresh?: () => void
   personColumns: Column<Persona>[]
@@ -41,6 +38,7 @@ export default function DashboardView({
   onView,  // ← Recibir onView
   onEdit,
   onDelete,
+  onRestore,
   onSearch,
   onExport,
   onFilter,
@@ -66,7 +64,7 @@ export default function DashboardView({
       id: 2,
       title: "Total Jóvenes",
       icon: <Church size={22} strokeWidth={1.5} />,
-      value: estadisticas.totalPersonasRegistradas,
+      value: personas.length,
       description: "Jóvenes registrados en la base de datos",
       backgroundColor: "#e8eaf6",
       iconColor: "#5c6bc0",
@@ -146,6 +144,7 @@ export default function DashboardView({
           onView={onView}  // ← Pasar onView al PeopleTable
           onEdit={onEdit}
           onDelete={onDelete}
+          onRestore={onRestore}
           itemsPerPage={10}
           showActions={true}
           loading={loadingPersonas}

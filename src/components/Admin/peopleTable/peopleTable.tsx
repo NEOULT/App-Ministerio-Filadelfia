@@ -2,8 +2,10 @@
 import React, { useState, useMemo, useRef, useEffect, useLayoutEffect } from 'react';
 import type { ChangeEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, Download, Filter, Plus, ChevronLeft, ChevronRight, MoreHorizontal, Eye, Edit2, Trash2 } from 'lucide-react';
+import { Search, Download, Plus, ChevronLeft, ChevronRight, MoreHorizontal, Eye, Edit2, Trash2, RotateCcw } from 'lucide-react';
 import './PeopleTable.css';
+import FilterDropdown, { DEFAULT_FILTERS, type FiltersState } from './FilterDropdown';
+import { calcularEdad } from './utils/personUtils';
 
 // Tipos específicos para las columnas
 export type ColumnAlignment = 'left' | 'center' | 'right';
@@ -22,10 +24,11 @@ export interface PeopleTableProps<T extends Record<string, unknown>> {
   columns: Column<T>[];
   onSearch?: (searchTerm: string) => void;
   onExport?: () => void;
-  onFilter?: () => void;
+  onFilter?: (filters: FiltersState) => void;
   onCreate?: () => void;
   onEdit?: (row: T) => void;
   onDelete?: (row: T) => void;
+  onRestore?: (row: T) => void;
   onView?: (row: T) => void;
   itemsPerPage?: number;
   showActions?: boolean;
@@ -38,10 +41,12 @@ interface ActionMenuProps<T> {
   onView?: (row: T) => void;
   onEdit?: (row: T) => void;
   onDelete?: (row: T) => void;
+  onRestore?: (row: T) => void;
+  deletedView?: boolean;
 }
 
 // ActionMenu component actualizado
-function ActionMenu<T>({ row, onView, onEdit, onDelete }: ActionMenuProps<T>) {
+function ActionMenu<T>({ row, onView, onEdit, onDelete, onRestore, deletedView = false }: ActionMenuProps<T>) {
   const [isOpen, setIsOpen] = useState(false);
   const triggerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -141,7 +146,16 @@ function ActionMenu<T>({ row, onView, onEdit, onDelete }: ActionMenuProps<T>) {
               <span>Editar</span>
             </button>
           )}
-          {onDelete && (
+          {deletedView && onRestore ? (
+            <button
+              className="action-menu-item restore-item"
+              onClick={() => handleAction(() => onRestore(row))}
+              type="button"
+            >
+              <RotateCcw size={16} />
+              <span>Restaurar</span>
+            </button>
+          ) : onDelete && (
             <button
               className="action-menu-item delete-item"
               onClick={() => handleAction(() => onDelete(row))}
@@ -171,9 +185,12 @@ export interface Persona extends Record<string, unknown> {
   ministerio?: string;
   nivel_academico?: string;
   ocupacion?: string;
+  direccion?: string;
   imagen_url?: string;
   createdAt?: string;
   updatedAt?: string;
+  isDeleted?: boolean;
+  deletedAt?: string | null;
   __v?: number;
   [key: string]: unknown;
 }
@@ -188,6 +205,7 @@ function PeopleTable<T extends Record<string, unknown>>({
   onCreate,
   onEdit,
   onDelete,
+  onRestore,
   onView,
   itemsPerPage = 10,
   showActions = true,
@@ -195,18 +213,92 @@ function PeopleTable<T extends Record<string, unknown>>({
 }: PeopleTableProps<T>) {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(1);
+  const [filters, setFilters] = useState<FiltersState>({ ...DEFAULT_FILTERS });
+  const [appliedFilters, setAppliedFilters] = useState<FiltersState>({ ...DEFAULT_FILTERS });
 
-  // Filtrar datos según búsqueda
+  // Calcular cuántos filtros activos hay
+  const activeFilterCount = useMemo(() => {
+    let count = 0
+    if (appliedFilters.cedula) count++
+    if (appliedFilters.edadExacta) count++
+    if (appliedFilters.edadMin || appliedFilters.edadMax) count++
+    if (appliedFilters.bautizado) count++
+    if (appliedFilters.genero) count++
+    if (appliedFilters.deletedOnly) count++
+    return count
+  }, [appliedFilters])
+
+  // Filtrar datos según búsqueda + filtros estructurados
   const filteredData = useMemo(() => {
-    if (!searchTerm.trim()) return data;
-    
-    return data.filter(row => {
-      return Object.values(row).some(value => {
-        if (value === null || value === undefined) return false;
-        return String(value).toLowerCase().includes(searchTerm.toLowerCase());
-      });
-    });
-  }, [data, searchTerm]);
+    let result = data
+
+    // Filtro por búsqueda de texto (soporta múltiples palabras)
+    const trimmed = searchTerm.trim()
+    if (trimmed) {
+      const words = trimmed.toLowerCase().split(/\s+/).filter(Boolean)
+      result = result.filter(row => {
+        const values = Object.values(row).filter(v => v != null).map(v => String(v).toLowerCase())
+        return words.every(word =>
+          values.some(val => val.includes(word))
+        )
+      })
+    }
+
+    // Filtros estructurados
+    const f = appliedFilters
+
+    if (f.cedula) {
+      const term = f.cedula.toLowerCase()
+      result = result.filter(row => {
+        const val = String((row as Record<string, unknown>).cedula ?? '')
+        return val.toLowerCase().includes(term)
+      })
+    }
+
+    if (f.edadExacta) {
+      const edadTarget = parseInt(f.edadExacta, 10)
+      if (!isNaN(edadTarget)) {
+        result = result.filter(row => {
+          const fechaNac = (row as Record<string, unknown>).fecha_nacimiento as string | undefined
+          const edad = calcularEdad(fechaNac)
+          return edad !== null && edad === edadTarget
+        })
+      }
+    }
+
+    if (f.edadMin || f.edadMax) {
+      const min = f.edadMin ? parseInt(f.edadMin, 10) : 0
+      const max = f.edadMax ? parseInt(f.edadMax, 10) : Infinity
+      if (!isNaN(min) && !isNaN(max)) {
+        result = result.filter(row => {
+          const fechaNac = (row as Record<string, unknown>).fecha_nacimiento as string | undefined
+          const edad = calcularEdad(fechaNac)
+          return edad !== null && edad >= min && edad <= max
+        })
+      }
+    }
+
+    if (f.bautizado) {
+      const buscandoSi = f.bautizado === 'si'
+      result = result.filter(row => {
+        const val = (row as Record<string, unknown>).bautizado
+        return val === buscandoSi
+      })
+    }
+
+    if (f.genero) {
+      result = result.filter(row => {
+        const val = (row as Record<string, unknown>).genero
+        return val === f.genero
+      })
+    }
+
+    if (f.deletedOnly) {
+      result = result.filter(row => Boolean((row as Record<string, unknown>).isDeleted))
+    }
+
+    return result
+  }, [data, searchTerm, appliedFilters]);
 
   // Paginación
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
@@ -284,14 +376,22 @@ function PeopleTable<T extends Record<string, unknown>>({
             <span>Exportar</span>
           </button>
           
-          <button 
-            onClick={onFilter} 
-            className="action-btn filter-btn"
-            type="button"
-          >
-            <Filter size={18} />
-            <span>Filtrar</span>
-          </button>
+          <FilterDropdown
+            filters={filters}
+            onChange={setFilters}
+            onApply={() => {
+              setAppliedFilters({ ...filters })
+              onFilter?.({ ...filters })
+              setCurrentPage(1)
+            }}
+            onClear={() => {
+              setFilters({ ...DEFAULT_FILTERS })
+              setAppliedFilters({ ...DEFAULT_FILTERS })
+              onFilter?.({ ...DEFAULT_FILTERS })
+              setCurrentPage(1)
+            }}
+            activeCount={activeFilterCount}
+          />
           
           <button 
             onClick={onCreate} 
@@ -357,6 +457,8 @@ function PeopleTable<T extends Record<string, unknown>>({
                           onView={onView}
                           onEdit={onEdit}
                           onDelete={onDelete}
+                          onRestore={onRestore}
+                          deletedView={appliedFilters.deletedOnly}
                         />
                       </td>
                     )}

@@ -1,17 +1,17 @@
-// src/components/Admin/Modals/DeletePersonModal.tsx
+// src/components/Admin/Modals/RestorePersonModal.tsx
 import { useState } from 'react'
 import { type Persona } from '@/components/Admin/peopleTable/peopleTable'
 import Modal from '@/components/ui/Modal/Modal'
-import { AlertTriangle } from 'lucide-react'
+import { RotateCcw } from 'lucide-react'
 
-interface DeletePersonModalProps {
+interface RestorePersonModalProps {
   isOpen: boolean
   onClose: () => void
   persona: Persona | null
   onConfirm: () => void
 }
 
-export default function DeletePersonModal({ isOpen, onClose, persona, onConfirm }: DeletePersonModalProps) {
+export default function RestorePersonModal({ isOpen, onClose, persona, onConfirm }: RestorePersonModalProps) {
   const [loading, setLoading] = useState(false)
 
   const handleConfirm = async () => {
@@ -20,7 +20,7 @@ export default function DeletePersonModal({ isOpen, onClose, persona, onConfirm 
       await onConfirm()
       onClose()
     } catch (error) {
-      console.error('Error al eliminar:', error)
+      console.error('Error al restaurar:', error)
     } finally {
       setLoading(false)
     }
@@ -29,41 +29,41 @@ export default function DeletePersonModal({ isOpen, onClose, persona, onConfirm 
   if (!persona) return null
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Eliminar Joven" size="sm">
-      <div className="delete-person-content">
-        <div className="warning-icon">
-          <AlertTriangle size={48} strokeWidth={1.5} />
+    <Modal isOpen={isOpen} onClose={onClose} title="Restaurar Joven" size="sm">
+      <div className="restore-person-content">
+        <div className="restore-icon">
+          <RotateCcw size={48} strokeWidth={1.5} />
         </div>
-        
-        <h4>¿Estás seguro de mover este registro a eliminados?</h4>
+
+        <h4>¿Quieres restaurar este registro?</h4>
         <p>
-          Esta acción eliminará a <strong>{persona.nombre} {persona.apellido}</strong> del listado activo.
+          <strong>{persona.nombre} {persona.apellido}</strong> volverá a aparecer en el listado activo.
         </p>
-        <p className="warning-text">
-          Podrás restaurarlo contactando al equipo de soporte.
+        <p className="restore-text">
+          Esta acción lo quitará de la vista de eliminados.
         </p>
 
         <div className="modal-actions">
           <button onClick={onClose} className="btn-secondary" type="button" disabled={loading}>
             Cancelar
           </button>
-          <button onClick={handleConfirm} className="btn-danger" type="button" disabled={loading}>
-            {loading ? 'Eliminando...' : 'Sí, eliminar'}
+          <button onClick={handleConfirm} className="btn-success" type="button" disabled={loading}>
+            {loading ? 'Restaurando...' : 'Sí, restaurar'}
           </button>
         </div>
       </div>
 
       <style>{`
-        .delete-person-content {
+        .restore-person-content {
           display: flex;
           flex-direction: column;
           align-items: center;
           text-align: center;
           gap: 16px;
         }
-        .warning-icon {
-          color: #ef4444;
-          background: #fef2f2;
+        .restore-icon {
+          color: #16a34a;
+          background: #f0fdf4;
           padding: 16px;
           border-radius: 50%;
           display: inline-flex;
@@ -79,8 +79,8 @@ export default function DeletePersonModal({ isOpen, onClose, persona, onConfirm 
           font-size: 0.875rem;
           color: #6b7280;
         }
-        .warning-text {
-          color: #b45309;
+        .restore-text {
+          color: #15803d;
           font-size: 0.75rem;
         }
         .modal-actions {
@@ -104,9 +104,9 @@ export default function DeletePersonModal({ isOpen, onClose, persona, onConfirm 
         .btn-secondary:hover:not(:disabled) {
           background: #e5e7eb;
         }
-        .btn-danger {
+        .btn-success {
           padding: 8px 20px;
-          background: #dc2626;
+          background: #16a34a;
           border: none;
           border-radius: 8px;
           font-size: 0.875rem;
@@ -114,8 +114,8 @@ export default function DeletePersonModal({ isOpen, onClose, persona, onConfirm 
           transition: all 0.2s;
           color: white;
         }
-        .btn-danger:hover:not(:disabled) {
-          background: #b91c1c;
+        .btn-success:hover:not(:disabled) {
+          background: #15803d;
         }
         button:disabled {
           opacity: 0.5;
