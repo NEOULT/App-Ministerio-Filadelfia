@@ -3,7 +3,7 @@ import React, { useState, useMemo, useRef, useEffect, useLayoutEffect } from 're
 import type { ChangeEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { Search, Download, Plus, ChevronLeft, ChevronRight, MoreHorizontal, Eye, Edit2, Trash2, RotateCcw } from 'lucide-react';
-import './PeopleTable.css';
+import './peopleTable.css';
 import FilterDropdown, { DEFAULT_FILTERS, type FiltersState } from './FilterDropdown';
 import { calcularEdad } from './utils/personUtils';
 
