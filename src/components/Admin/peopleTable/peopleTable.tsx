@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useRef, useEffect, useLayoutEffect } from 'react';
 import type { ChangeEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, Download, Plus, ChevronLeft, ChevronRight, MoreHorizontal, Eye, Edit2, Trash2, RotateCcw } from 'lucide-react';
+import { Search, Download, Plus, ChevronLeft, ChevronRight, MoreHorizontal, Eye, Edit2, Trash2, RotateCcw, ArrowUpDown, ChevronUp, ChevronDown, X } from 'lucide-react';
 import './PeopleTable.css';
 import FilterDropdown, { DEFAULT_FILTERS, type FiltersState } from './FilterDropdown';
 import { calcularEdad, getBirthMonthFromFechaNacimiento } from './utils/personUtils';
@@ -15,6 +15,81 @@ export interface Column<T = Record<string, unknown>> {
   label: string;
   render?: (value: unknown, row: T) => React.ReactNode;
   align?: ColumnAlignment;
+}
+
+type SortDirection = 'asc' | 'desc';
+
+type SortMode = 'default' | 'birthMonthDay';
+
+interface SortState {
+  key: string | null;
+  direction: SortDirection;
+  mode: SortMode;
+}
+
+function getRowSortValue<T extends Record<string, unknown>>(row: T, key: string, mode: SortMode) {
+  switch (key) {
+    case 'nombreCompleto': {
+      const nombre = String((row as Record<string, unknown>).nombre ?? '')
+      const apellido = String((row as Record<string, unknown>).apellido ?? '')
+      return `${nombre} ${apellido}`.trim()
+    }
+    case 'cedula': {
+      const cedulaValue = Number((row as Record<string, unknown>).cedula)
+      return Number.isNaN(cedulaValue) ? null : cedulaValue
+    }
+    case 'edad': {
+      const fechaNac = (row as Record<string, unknown>).fecha_nacimiento as string | undefined
+      return calcularEdad(fechaNac)
+    }
+    case 'fecha_nacimiento': {
+      const fechaNac = (row as Record<string, unknown>).fecha_nacimiento as string | undefined
+      if (!fechaNac) return null
+      const date = new Date(fechaNac)
+      if (Number.isNaN(date.getTime())) return null
+
+      if (mode === 'birthMonthDay') {
+        return {
+          month: date.getMonth(),
+          day: date.getDate(),
+          year: date.getFullYear(),
+          time: date.getTime()
+        }
+      }
+
+      return date.getTime()
+    }
+    default: {
+      const value = (row as Record<string, unknown>)[key]
+      if (value === null || value === undefined) return null
+      if (typeof value === 'boolean') return value ? 1 : 0
+      if (typeof value === 'number') return value
+      return String(value).toLowerCase()
+    }
+  }
+}
+
+function compareSortValues(left: unknown, right: unknown, direction: SortDirection) {
+  const multiplier = direction === 'asc' ? 1 : -1
+
+  if (left === null || left === undefined) return right === null || right === undefined ? 0 : 1 * multiplier
+  if (right === null || right === undefined) return -1 * multiplier
+
+  if (typeof left === 'object' && typeof right === 'object' && left && right && 'month' in left && 'month' in right) {
+    const leftDate = left as { month: number; day: number; year: number; time: number }
+    const rightDate = right as { month: number; day: number; year: number; time: number }
+    if (leftDate.month !== rightDate.month) return (leftDate.month - rightDate.month) * multiplier
+    if (leftDate.day !== rightDate.day) return (leftDate.day - rightDate.day) * multiplier
+    if (leftDate.year !== rightDate.year) return (leftDate.year - rightDate.year) * multiplier
+    return (leftDate.time - rightDate.time) * multiplier
+  }
+
+  if (typeof left === 'number' && typeof right === 'number') {
+    return (left - right) * multiplier
+  }
+
+  const collator = new Intl.Collator('es', { numeric: true, sensitivity: 'base' })
+  return collator.compare(String(left), String(right)) * multiplier
 }
 
 // Props del componente con tipos genéricos
@@ -215,6 +290,12 @@ function PeopleTable<T extends Record<string, unknown>>({
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [filters, setFilters] = useState<FiltersState>({ ...DEFAULT_FILTERS });
   const [appliedFilters, setAppliedFilters] = useState<FiltersState>({ ...DEFAULT_FILTERS });
+  const [sortState, setSortState] = useState<SortState>({ key: null, direction: 'asc', mode: 'default' });
+  const sortMenuButtonRef = useRef<HTMLButtonElement>(null);
+  const sortMenuRef = useRef<HTMLDivElement>(null);
+  const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
+  const [sortMenuStyles, setSortMenuStyles] = useState<React.CSSProperties>({});
+  const [isSortMenuPositioned, setIsSortMenuPositioned] = useState(false);
 
   // Calcular cuántos filtros activos hay
   const activeFilterCount = useMemo(() => {
@@ -309,14 +390,93 @@ function PeopleTable<T extends Record<string, unknown>>({
     return result
   }, [data, searchTerm, appliedFilters]);
 
+  const sortedData = useMemo(() => {
+    if (!sortState.key) return filteredData
+
+    const rows = [...filteredData]
+    rows.sort((leftRow, rightRow) => {
+      const leftValue = getRowSortValue(leftRow, sortState.key as string, sortState.mode)
+      const rightValue = getRowSortValue(rightRow, sortState.key as string, sortState.mode)
+      return compareSortValues(leftValue, rightValue, sortState.direction)
+    })
+    return rows
+  }, [filteredData, sortState])
+
   // Paginación
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const totalPages = Math.ceil(sortedData.length / itemsPerPage);
   
   const paginatedData = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
     const end = start + itemsPerPage;
-    return filteredData.slice(start, end);
-  }, [filteredData, currentPage, itemsPerPage]);
+    return sortedData.slice(start, end);
+  }, [sortedData, currentPage, itemsPerPage]);
+
+  useEffect(() => {
+    if (!isSortMenuOpen || !sortMenuButtonRef.current || !sortMenuRef.current) {
+      setIsSortMenuPositioned(false)
+      return
+    }
+
+    const buttonRect = sortMenuButtonRef.current.getBoundingClientRect()
+    const menuRect = sortMenuRef.current.getBoundingClientRect()
+    const viewportWidth = window.innerWidth
+    const viewportHeight = window.innerHeight
+    const gap = 8
+
+    const top = Math.min(viewportHeight - menuRect.height - gap, buttonRect.bottom + gap)
+    const left = Math.min(viewportWidth - menuRect.width - gap, Math.max(gap, buttonRect.right - menuRect.width))
+
+    setSortMenuStyles({ position: 'fixed', top, left, zIndex: 1000 })
+    setIsSortMenuPositioned(true)
+  }, [isSortMenuOpen])
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node
+      if (
+        sortMenuButtonRef.current &&
+        !sortMenuButtonRef.current.contains(target) &&
+        sortMenuRef.current &&
+        !sortMenuRef.current.contains(target)
+      ) {
+        setIsSortMenuOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const setSorting = (key: string, direction: SortDirection, mode: SortMode = 'default') => {
+    setSortState({ key, direction, mode })
+    setCurrentPage(1)
+    setIsSortMenuOpen(false)
+  }
+
+  const toggleSorting = (key: string) => {
+    setSortState(prev => {
+      const nextDirection: SortDirection = prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+      return { key, direction: nextDirection, mode: key === 'fecha_nacimiento' ? prev.mode : 'default' }
+    })
+    setCurrentPage(1)
+    setIsSortMenuOpen(false)
+  }
+
+  const clearSorting = (event: React.MouseEvent) => {
+    event.stopPropagation()
+    setSortState({ key: null, direction: 'asc', mode: 'default' })
+    setCurrentPage(1)
+  }
+
+  const getSortLabel = (key: string) => {
+    if (sortState.key !== key) return null
+    return sortState.direction === 'asc' ? 'Ascendente' : 'Descendente'
+  }
+
+  const renderSortIcon = (key: string) => {
+    if (sortState.key !== key) return <ArrowUpDown size={14} />
+    return sortState.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
+  }
 
   const handleSearch = (event: ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value;
@@ -431,9 +591,45 @@ function PeopleTable<T extends Record<string, unknown>>({
                       column.align === 'center' ? 'text-center' : 
                       column.align === 'right' ? 'text-right' : 
                       'text-left'
-                    }`}
+                    } ${sortState.key === String(column.key) ? 'sorted-column' : ''}`}
+                    aria-sort={sortState.key === String(column.key) ? (sortState.direction === 'asc' ? 'ascending' : 'descending') : 'none'}
                   >
-                    {column.label}
+                    <div className="table-header-content">
+                      <button
+                        type="button"
+                        className="table-header-sort-btn"
+                        onClick={() => toggleSorting(String(column.key))}
+                      >
+                        <span>{column.label}</span>
+                        <span className="sort-icon">{renderSortIcon(String(column.key))}</span>
+                      </button>
+
+                      {String(column.key) === 'fecha_nacimiento' && (
+                        <button
+                          ref={sortMenuButtonRef}
+                          type="button"
+                          className="table-header-menu-btn"
+                          onClick={() => setIsSortMenuOpen(prev => !prev)}
+                          aria-label="Mostrar opciones de ordenamiento"
+                        >
+                          <ChevronDown size={14} />
+                        </button>
+                      )}
+
+                      {sortState.key === String(column.key) && (
+                        <span className="sort-badge">
+                          {getSortLabel(String(column.key))}
+                          <button
+                            type="button"
+                            className="sort-clear-btn"
+                            onClick={clearSorting}
+                            aria-label="Limpiar ordenamiento"
+                          >
+                            <X size={12} />
+                          </button>
+                        </span>
+                      )}
+                    </div>
                   </th>
                 ))}
                 {showActions && (
@@ -443,6 +639,43 @@ function PeopleTable<T extends Record<string, unknown>>({
                 )}
               </tr>
             </thead>
+            {isSortMenuOpen && createPortal(
+              <div
+                ref={sortMenuRef}
+                className="sort-dropdown-menu"
+                style={{ ...sortMenuStyles, visibility: isSortMenuPositioned ? 'visible' : 'hidden' }}
+              >
+                <button
+                  type="button"
+                  className="sort-dropdown-item"
+                  onClick={() => setSorting('fecha_nacimiento', 'asc', 'default')}
+                >
+                  Fecha de nacimiento: más antiguas
+                </button>
+                <button
+                  type="button"
+                  className="sort-dropdown-item"
+                  onClick={() => setSorting('fecha_nacimiento', 'desc', 'default')}
+                >
+                  Fecha de nacimiento: más recientes
+                </button>
+                <button
+                  type="button"
+                  className="sort-dropdown-item"
+                  onClick={() => setSorting('fecha_nacimiento', 'asc', 'birthMonthDay')}
+                >
+                  Mes y día de nacimiento
+                </button>
+                <button
+                  type="button"
+                  className="sort-dropdown-item"
+                  onClick={() => setSorting('fecha_nacimiento', 'desc', 'birthMonthDay')}
+                >
+                  Mes y día de nacimiento inverso
+                </button>
+              </div>,
+              document.body
+            )}
             <tbody>
               {paginatedData.length > 0 ? (
                 paginatedData.map((row, index) => (
