@@ -20,6 +20,16 @@ export function calcularEdad(fechaNacimiento?: string): number | null {
   return age
 }
 
+export function getBirthMonthFromFechaNacimiento(fechaNacimiento?: string): number | null {
+  if (!fechaNacimiento) return null
+
+  const [fechaParte] = fechaNacimiento.split('T')
+  const [, month] = fechaParte.split('-')
+  const parsedMonth = Number.parseInt(month, 10)
+
+  return Number.isNaN(parsedMonth) ? null : parsedMonth
+}
+
 export function formatearTelefono(telefono?: string): string {
   return telefono || '-'
 }

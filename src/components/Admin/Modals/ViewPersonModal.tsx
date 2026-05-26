@@ -58,9 +58,17 @@ export default function ViewPersonModal({ isOpen, onClose, persona }: ViewPerson
         </div>
 
         {/* Campos de texto libre en fila separada o ancho completo */}
-        <div className="info-group-full">
-          <label>Ministerio</label>
-          <p className="text-wrap">{persona.ministerio || '-'}</p>
+        <div className="info-row">
+          <div className="info-group">
+            <label>Faltas</label>
+            <p style={{ color: (persona.faltas ?? 0) > 2 ? '#dc2626' : '#1f2937', fontWeight: (persona.faltas ?? 0) > 2 ? 700 : 400 }}>
+              {persona.faltas ?? 0}
+            </p>
+          </div>
+          <div className="info-group">
+            <label>Ministerio</label>
+            <p className="text-wrap">{persona.ministerio || '-'}</p>
+          </div>
         </div>
 
         <div className="info-group-full">

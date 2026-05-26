@@ -8,19 +8,38 @@ export interface FiltersState {
   edadExacta: string
   edadMin: string
   edadMax: string
+  mesesNacimiento: string[]
   bautizado: '' | 'si' | 'no'
   genero: '' | 'M' | 'F'
   deletedOnly: boolean
+  faltasMin: string
 }
+
+const MONTH_OPTIONS = [
+  { value: '1', label: 'Enero' },
+  { value: '2', label: 'Febrero' },
+  { value: '3', label: 'Marzo' },
+  { value: '4', label: 'Abril' },
+  { value: '5', label: 'Mayo' },
+  { value: '6', label: 'Junio' },
+  { value: '7', label: 'Julio' },
+  { value: '8', label: 'Agosto' },
+  { value: '9', label: 'Septiembre' },
+  { value: '10', label: 'Octubre' },
+  { value: '11', label: 'Noviembre' },
+  { value: '12', label: 'Diciembre' }
+]
 
 export const DEFAULT_FILTERS: FiltersState = {
   cedula: '',
   edadExacta: '',
   edadMin: '',
   edadMax: '',
+  mesesNacimiento: [],
   bautizado: '',
   genero: '',
-  deletedOnly: false
+  deletedOnly: false,
+  faltasMin: ''
 }
 
 interface FilterDropdownProps {
@@ -95,8 +114,16 @@ export default function FilterDropdown({
     setIsOpen(false)
   }
 
-  const update = (field: keyof FiltersState, value: string | boolean) => {
+  const update = (field: keyof FiltersState, value: string | boolean | string[]) => {
     onChange(prev => ({ ...prev, [field]: value }))
+  }
+
+  const toggleMonth = (month: string) => {
+    const selectedMonths = filters.mesesNacimiento.includes(month)
+      ? filters.mesesNacimiento.filter(value => value !== month)
+      : [...filters.mesesNacimiento, month]
+
+    update('mesesNacimiento', selectedMonths)
   }
 
   return (
@@ -188,6 +215,27 @@ export default function FilterDropdown({
               </div>
             </div>
 
+            {/* Meses de nacimiento */}
+            <div className="filter-group">
+              <label>Meses de nacimiento</label>
+              <div className="month-grid" role="group" aria-label="Seleccionar meses de nacimiento">
+                {MONTH_OPTIONS.map(month => {
+                  const isSelected = filters.mesesNacimiento.includes(month.value)
+                  return (
+                    <button
+                      key={month.value}
+                      type="button"
+                      className={`month-option ${isSelected ? 'month-option-selected' : ''}`}
+                      onClick={() => toggleMonth(month.value)}
+                      aria-pressed={isSelected}
+                    >
+                      {month.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
             {/* Bautizado */}
             <div className="filter-group">
               <label>Bautizado</label>
@@ -214,6 +262,19 @@ export default function FilterDropdown({
                 <option value="M">Masculino</option>
                 <option value="F">Femenino</option>
               </select>
+            </div>
+
+            {/* Faltas mínimas */}
+            <div className="filter-group">
+              <label>Faltas mínimas</label>
+              <input
+                type="number"
+                min="0"
+                value={filters.faltasMin}
+                onChange={(e) => update('faltasMin', e.target.value)}
+                placeholder="Ej: 3"
+                className="filter-input"
+              />
             </div>
 
             {/* Eliminados */}

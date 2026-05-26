@@ -126,6 +126,33 @@ export default function Admin() {
       label: 'Bautizado', 
       align: 'center',
       render: (_, row) => formatearBautizado(row.bautizado)
+    },
+    { 
+      key: 'faltas', 
+      label: 'Faltas', 
+      align: 'center',
+      render: (_, row) => {
+        const faltas = (row as Record<string, unknown>).faltas as number | undefined
+        if (faltas === undefined || faltas === null) return '-'
+        const isAlert = faltas > 2
+        return (
+          <span style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '3px 10px',
+            borderRadius: '999px',
+            fontSize: '0.8rem',
+            fontWeight: isAlert ? 700 : 500,
+            backgroundColor: isAlert ? '#fef2f2' : '#f3f4f6',
+            color: isAlert ? '#dc2626' : '#374151',
+            border: isAlert ? '1px solid #fecaca' : '1px solid #e5e7eb',
+          }}>
+            {isAlert && <span style={{ fontSize: '0.75rem' }}>⚠️</span>}
+            {faltas}
+          </span>
+        )
+      }
     }
   ]
 
