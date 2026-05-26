@@ -164,7 +164,7 @@ function generateBirthdayHTML<T extends Record<string, unknown>>(data: T[]): str
 
   // Filter out empty months, sort chronologically
   const nonEmptyMonths = Array.from(groupedByMonth.entries())
-    .filter(([_, rows]) => rows.length > 0)
+    .filter(([ , rows]) => rows.length > 0)
     .sort(([a], [b]) => a - b)
 
   const monthsSpanish = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
