@@ -201,9 +201,6 @@ function generateBirthdayHTML<T extends Record<string, unknown>>(data: T[]): str
     })
   })
 
-  const today = new Date()
-  const dateStr = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()}`
-
   return `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -873,6 +870,7 @@ function PeopleTable<T extends Record<string, unknown>>({
   }
 
   const handleExportBirthday = () => {
+    onExport?.()
     const html = generateBirthdayHTML(sortedData)
     const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
     const url = URL.createObjectURL(blob)
