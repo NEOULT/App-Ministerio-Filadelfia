@@ -27,6 +27,36 @@ interface SortState {
   mode: SortMode;
 }
 
+const FLOATING_MENU_GAP = 8;
+const SORT_MENU_ESTIMATED_SIZE = { width: 240, height: 96 };
+const EXPORT_MENU_ESTIMATED_SIZE = { width: 220, height: 88 };
+
+function getFloatingMenuStyles(
+  triggerRect: DOMRect,
+  menuSize: { width: number; height: number },
+  alignRight = false
+): React.CSSProperties {
+  const viewportWidth = window.innerWidth
+  const viewportHeight = window.innerHeight
+
+  const top = Math.min(
+    viewportHeight - menuSize.height - FLOATING_MENU_GAP,
+    Math.max(FLOATING_MENU_GAP, triggerRect.bottom + FLOATING_MENU_GAP)
+  )
+
+  const left = alignRight
+    ? Math.min(
+        viewportWidth - menuSize.width - FLOATING_MENU_GAP,
+        Math.max(FLOATING_MENU_GAP, triggerRect.right - menuSize.width)
+      )
+    : Math.min(
+        viewportWidth - menuSize.width - FLOATING_MENU_GAP,
+        Math.max(FLOATING_MENU_GAP, triggerRect.left)
+      )
+
+  return { position: 'fixed', top, left, zIndex: 1000 }
+}
+
 function getRowSortValue<T extends Record<string, unknown>>(row: T, key: string, mode: SortMode) {
   switch (key) {
     case 'nombreCompleto': {
@@ -605,6 +635,7 @@ export interface Persona extends Record<string, unknown> {
   isDeleted?: boolean;
   deletedAt?: string | null;
   __v?: number;
+  faltas?: number;
   [key: string]: unknown;
 }
 
@@ -652,6 +683,7 @@ function PeopleTable<T extends Record<string, unknown>>({
     if (appliedFilters.bautizado) count++
     if (appliedFilters.genero) count++
     if (appliedFilters.deletedOnly) count++
+    if (appliedFilters.faltasMin) count++
     return count
   }, [appliedFilters])
 
@@ -732,6 +764,16 @@ function PeopleTable<T extends Record<string, unknown>>({
       result = result.filter(row => Boolean((row as Record<string, unknown>).isDeleted))
     }
 
+    if (f.faltasMin) {
+      const faltasMin = parseInt(f.faltasMin, 10)
+      if (!isNaN(faltasMin)) {
+        result = result.filter(row => {
+          const faltas = (row as Record<string, unknown>).faltas as number | undefined
+          return faltas !== undefined && faltas !== null && faltas >= faltasMin
+        })
+      }
+    }
+
     return result
   }, [data, searchTerm, appliedFilters]);
 
@@ -756,7 +798,7 @@ function PeopleTable<T extends Record<string, unknown>>({
     return sortedData.slice(start, end);
   }, [sortedData, currentPage, itemsPerPage]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!isSortMenuOpen || !sortMenuButtonRef.current || !sortMenuRef.current) {
       setIsSortMenuPositioned(false)
       return
@@ -764,14 +806,7 @@ function PeopleTable<T extends Record<string, unknown>>({
 
     const buttonRect = sortMenuButtonRef.current.getBoundingClientRect()
     const menuRect = sortMenuRef.current.getBoundingClientRect()
-    const viewportWidth = window.innerWidth
-    const viewportHeight = window.innerHeight
-    const gap = 8
-
-    const top = Math.min(viewportHeight - menuRect.height - gap, buttonRect.bottom + gap)
-    const left = Math.min(viewportWidth - menuRect.width - gap, Math.max(gap, buttonRect.right - menuRect.width))
-
-    setSortMenuStyles({ position: 'fixed', top, left, zIndex: 1000 })
+    setSortMenuStyles(getFloatingMenuStyles(buttonRect, menuRect, true))
     setIsSortMenuPositioned(true)
   }, [isSortMenuOpen])
 
@@ -793,7 +828,7 @@ function PeopleTable<T extends Record<string, unknown>>({
   }, [])
 
   // Export dropdown positioning
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!isExportOpen || !exportButtonRef.current || !exportMenuRef.current) {
       setIsExportMenuPositioned(false)
       return
@@ -801,14 +836,7 @@ function PeopleTable<T extends Record<string, unknown>>({
 
     const buttonRect = exportButtonRef.current.getBoundingClientRect()
     const menuRect = exportMenuRef.current.getBoundingClientRect()
-    const viewportWidth = window.innerWidth
-    const viewportHeight = window.innerHeight
-    const gap = 8
-
-    const top = Math.min(viewportHeight - menuRect.height - gap, Math.max(gap, buttonRect.bottom + gap))
-    const left = Math.min(viewportWidth - menuRect.width - gap, Math.max(gap, buttonRect.left))
-
-    setExportMenuStyles({ position: 'fixed', top, left, zIndex: 1000 })
+    setExportMenuStyles(getFloatingMenuStyles(buttonRect, menuRect, false))
     setIsExportMenuPositioned(true)
   }, [isExportOpen])
 
@@ -856,6 +884,36 @@ function PeopleTable<T extends Record<string, unknown>>({
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
     setIsExportOpen(false)
+  }
+
+  const handleSortMenuToggle = () => {
+    if (isSortMenuOpen) {
+      setIsSortMenuPositioned(false)
+      setIsSortMenuOpen(false)
+      return
+    }
+
+    if (sortMenuButtonRef.current) {
+      setSortMenuStyles(getFloatingMenuStyles(sortMenuButtonRef.current.getBoundingClientRect(), SORT_MENU_ESTIMATED_SIZE, true))
+      setIsSortMenuPositioned(true)
+    }
+
+    setIsSortMenuOpen(true)
+  }
+
+  const handleExportMenuToggle = () => {
+    if (isExportOpen) {
+      setIsExportMenuPositioned(false)
+      setIsExportOpen(false)
+      return
+    }
+
+    if (exportButtonRef.current) {
+      setExportMenuStyles(getFloatingMenuStyles(exportButtonRef.current.getBoundingClientRect(), EXPORT_MENU_ESTIMATED_SIZE, false))
+      setIsExportMenuPositioned(true)
+    }
+
+    setIsExportOpen(true)
   }
 
   const clearSorting = (event: React.MouseEvent) => {
@@ -937,7 +995,7 @@ function PeopleTable<T extends Record<string, unknown>>({
           
           <div className="export-dropdown-container" ref={exportButtonRef}>
             <button 
-              onClick={() => setIsExportOpen(prev => !prev)} 
+              onClick={handleExportMenuToggle} 
               className="action-btn export-btn"
               type="button"
             >
@@ -1031,7 +1089,7 @@ function PeopleTable<T extends Record<string, unknown>>({
                           ref={sortMenuButtonRef}
                           type="button"
                           className="table-header-menu-btn"
-                          onClick={() => setIsSortMenuOpen(prev => !prev)}
+                          onClick={handleSortMenuToggle}
                           aria-label="Mostrar opciones de ordenamiento"
                         >
                           <ChevronDown size={14} />
