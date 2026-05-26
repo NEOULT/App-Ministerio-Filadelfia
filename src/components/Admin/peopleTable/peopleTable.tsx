@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { Search, Download, Plus, ChevronLeft, ChevronRight, MoreHorizontal, Eye, Edit2, Trash2, RotateCcw } from 'lucide-react';
 import './PeopleTable.css';
 import FilterDropdown, { DEFAULT_FILTERS, type FiltersState } from './FilterDropdown';
-import { calcularEdad } from './utils/personUtils';
+import { calcularEdad, getBirthMonthFromFechaNacimiento } from './utils/personUtils';
 
 // Tipos específicos para las columnas
 export type ColumnAlignment = 'left' | 'center' | 'right';
@@ -222,6 +222,7 @@ function PeopleTable<T extends Record<string, unknown>>({
     if (appliedFilters.cedula) count++
     if (appliedFilters.edadExacta) count++
     if (appliedFilters.edadMin || appliedFilters.edadMax) count++
+    if (appliedFilters.mesesNacimiento.length) count++
     if (appliedFilters.bautizado) count++
     if (appliedFilters.genero) count++
     if (appliedFilters.deletedOnly) count++
@@ -276,6 +277,14 @@ function PeopleTable<T extends Record<string, unknown>>({
           return edad !== null && edad >= min && edad <= max
         })
       }
+    }
+
+    if (f.mesesNacimiento.length) {
+      result = result.filter(row => {
+        const fechaNac = (row as Record<string, unknown>).fecha_nacimiento as string | undefined
+        const month = getBirthMonthFromFechaNacimiento(fechaNac)
+        return month !== null && f.mesesNacimiento.includes(String(month))
+      })
     }
 
     if (f.bautizado) {
