@@ -12,6 +12,7 @@ export interface FiltersState {
   bautizado: '' | 'si' | 'no'
   genero: '' | 'M' | 'F'
   deletedOnly: boolean
+  faltasMin: string
 }
 
 const MONTH_OPTIONS = [
@@ -37,7 +38,8 @@ export const DEFAULT_FILTERS: FiltersState = {
   mesesNacimiento: [],
   bautizado: '',
   genero: '',
-  deletedOnly: false
+  deletedOnly: false,
+  faltasMin: ''
 }
 
 interface FilterDropdownProps {
@@ -260,6 +262,19 @@ export default function FilterDropdown({
                 <option value="M">Masculino</option>
                 <option value="F">Femenino</option>
               </select>
+            </div>
+
+            {/* Faltas mínimas */}
+            <div className="filter-group">
+              <label>Faltas mínimas</label>
+              <input
+                type="number"
+                min="0"
+                value={filters.faltasMin}
+                onChange={(e) => update('faltasMin', e.target.value)}
+                placeholder="Ej: 3"
+                className="filter-input"
+              />
             </div>
 
             {/* Eliminados */}

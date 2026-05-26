@@ -38,6 +38,7 @@ export function usePersonas(deletedOnly = false) {
       isDeleted: typeof raw.isDeleted === 'boolean' ? raw.isDeleted : undefined,
       deletedAt: typeof raw.deletedAt === 'string' || raw.deletedAt === null ? (raw.deletedAt as string | null) : undefined,
       __v: typeof raw.__v === 'number' ? raw.__v : undefined,
+      faltas: typeof raw.faltas === 'number' ? raw.faltas : undefined,
     }
   }, [])
 
