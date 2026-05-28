@@ -1,7 +1,8 @@
 // src/components/Admin/DashboardView/DashboardView.tsx
 import { Calendar, CalendarDays, Church, RefreshCw, AlertOctagon } from 'lucide-react'
 import StatsCard from '@/components/Admin/StatsCard/StatsCard'
-import PeopleTable, { type Persona } from '@/components/Admin/peopleTable/peopleTable'
+import PeopleTable from '@/components/Admin/peopleTable/peopleTable'
+import type { Persona } from '@/components/Admin/peopleTable/types'
 import type { FiltersState } from '@/components/Admin/peopleTable/FilterDropdown'
 import type { EstadisticasResponse } from '@/services/Api'
 import { Button } from '@/components/ui/button'

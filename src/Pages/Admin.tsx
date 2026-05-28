@@ -1,6 +1,6 @@
 // src/Pages/Admin.tsx
 import { useEffect, useState } from 'react'
-import { type Persona } from '@/components/Admin/peopleTable/peopleTable'
+import type { Persona } from '@/components/Admin/peopleTable/types'
 import { usePersonas } from '@/hooks/usePersonas'
 import { useStatistics } from '@/hooks/useStatistics'
 import { getCurrentMonthRange } from '@/utils/dateUtils'

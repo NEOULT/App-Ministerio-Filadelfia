@@ -1,7 +1,9 @@
 // src/components/Admin/peopleTable/FilterDropdown.tsx
-import { useState, useRef, useEffect, useLayoutEffect } from 'react'
+import { useState, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { Filter, X } from 'lucide-react'
+import { useClickOutside } from './hooks/useClickOutside'
+import { useFloatingMenu } from './hooks/useFloatingMenu'
 
 export interface FiltersState {
   cedula: string
@@ -60,49 +62,9 @@ export default function FilterDropdown({
   const [isOpen, setIsOpen] = useState(false)
   const triggerRef = useRef<HTMLDivElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
-  const [menuStyles, setMenuStyles] = useState<React.CSSProperties>({})
-  const [isPositioned, setIsPositioned] = useState(false)
+  const { styles: menuStyles, isPositioned } = useFloatingMenu(triggerRef, dropdownRef, isOpen)
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Node
-      if (
-        triggerRef.current &&
-        !triggerRef.current.contains(target) &&
-        dropdownRef.current &&
-        !dropdownRef.current.contains(target)
-      ) {
-        setIsOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  useLayoutEffect(() => {
-    if (!isOpen || !triggerRef.current || !dropdownRef.current) {
-      setIsPositioned(false)
-      return
-    }
-    const triggerRect = triggerRef.current.getBoundingClientRect()
-    const dropdownRect = dropdownRef.current.getBoundingClientRect()
-    const viewportWidth = window.innerWidth
-    const viewportHeight = window.innerHeight
-    const gap = 8
-
-    const openAbove = triggerRect.bottom + dropdownRect.height + gap > viewportHeight && triggerRect.top > dropdownRect.height + gap
-    const top = openAbove
-      ? Math.max(gap, triggerRect.top - dropdownRect.height - gap)
-      : Math.min(viewportHeight - dropdownRect.height - gap, triggerRect.bottom + gap)
-
-    const openToLeft = triggerRect.left + dropdownRect.width > viewportWidth - gap
-    const left = openToLeft
-      ? Math.max(gap, triggerRect.right - dropdownRect.width)
-      : Math.min(viewportWidth - dropdownRect.width - gap, triggerRect.left)
-
-    setMenuStyles({ position: 'fixed', top, left, zIndex: 1000 })
-    setIsPositioned(true)
-  }, [isOpen])
+  useClickOutside([triggerRef, dropdownRef], () => setIsOpen(false), isOpen)
 
   const handleClear = () => {
     onClear()
