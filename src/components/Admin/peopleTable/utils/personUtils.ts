@@ -1,5 +1,5 @@
-// src/utils/personaUtils.ts
-import { type Persona } from '@/components/Admin/peopleTable/peopleTable'
+// src/components/Admin/peopleTable/utils/personUtils.ts
+import { type Persona } from '@/components/Admin/peopleTable/types'
 
 export function getNombreCompleto(persona: Persona): string {
   return `${persona.nombre} ${persona.apellido}`.trim()

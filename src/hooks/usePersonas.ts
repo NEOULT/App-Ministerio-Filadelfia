@@ -1,7 +1,7 @@
 // src/hooks/usePersonas.ts
 import { useState, useEffect, useCallback } from 'react'
 import { getPersonas, type Persona as ApiPersona } from '../services/Api'
-import { type Persona as TablePersona } from '@/components/Admin/peopleTable/peopleTable'
+import type { Persona as TablePersona } from '@/components/Admin/peopleTable/types'
 
 export function usePersonas(deletedOnly = false) {
   const [personas, setPersonas] = useState<TablePersona[]>([])

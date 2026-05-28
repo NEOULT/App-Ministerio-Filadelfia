@@ -1,7 +1,8 @@
 // src/components/Admin/DashboardView/DashboardView.tsx
 import { Calendar, CalendarDays, Church, RefreshCw, AlertOctagon } from 'lucide-react'
 import StatsCard from '@/components/Admin/StatsCard/StatsCard'
-import PeopleTable, { type Persona } from '@/components/Admin/peopleTable/peopleTable'
+import PeopleTable from '@/components/Admin/peopleTable/peopleTable'
+import type { Persona, ExtraField } from '@/components/Admin/peopleTable/types'
 import type { FiltersState } from '@/components/Admin/peopleTable/FilterDropdown'
 import type { EstadisticasResponse } from '@/services/Api'
 import { Button } from '@/components/ui/button'
@@ -28,6 +29,7 @@ interface DashboardViewProps {
   onCreate: () => void
   onRefresh?: () => void
   personColumns: Column<Persona>[]
+  extraExportFields?: ExtraField[]
 }
 
 export default function DashboardView({
@@ -44,7 +46,8 @@ export default function DashboardView({
   onFilter,
   onCreate,
   onRefresh,
-  personColumns
+  personColumns,
+  extraExportFields
 }: DashboardViewProps) {
   
   // Paleta de colores pastel
@@ -137,6 +140,7 @@ export default function DashboardView({
           title="Base de Datos de Jóvenes"
           data={personas}
           columns={personColumns}
+          extraExportFields={extraExportFields}
           onSearch={onSearch}
           onExport={onExport}
           onFilter={onFilter}
