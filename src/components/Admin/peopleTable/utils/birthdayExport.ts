@@ -59,7 +59,7 @@ export function generateBirthdayHTML(data: Record<string, unknown>[]): string {
 
   // Filter out empty months, sort chronologically
   const nonEmptyMonths = Array.from(groupedByMonth.entries())
-    .filter(([_, rows]) => rows.length > 0)
+    .filter(([, rows]) => rows.length > 0)
     .sort(([a], [b]) => a - b)
 
   let tableRows = ''
@@ -83,16 +83,12 @@ export function generateBirthdayHTML(data: Record<string, unknown>[]): string {
     })
   })
 
-  const today = new Date()
-  const dateStr = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()}`
-
-  return buildHTMLTemplate(tableRows, data.length, dateStr)
+  return buildHTMLTemplate(tableRows, data.length)
 }
 
 function buildHTMLTemplate(
   tableRows: string,
-  totalPersonas: number,
-  _dateStr: string
+  totalPersonas: number
 ): string {
   return `<!DOCTYPE html>
 <html lang="es">

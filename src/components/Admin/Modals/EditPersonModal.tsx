@@ -1,7 +1,7 @@
 // src/components/Admin/Modals/EditPersonModal.tsx
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { AlertCircle } from 'lucide-react'
-import { type Persona } from '@/components/Admin/peopleTable/peopleTable'
+import { type Persona } from '@/components/Admin/peopleTable/types'
 import Modal from '@/components/ui/Modal/Modal'
 
 interface FieldError {
@@ -63,7 +63,7 @@ export default function EditPersonModal({ isOpen, onClose, persona, onSave }: Ed
   }, [])
 
   const handleChange = (field: string, value: string | boolean | number) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
+    setFormData((prev: Partial<Persona>) => ({ ...prev, [field]: value }))
     if (error || Object.keys(fieldErrors).length > 0) {
       setError(null)
       setFieldErrors({})

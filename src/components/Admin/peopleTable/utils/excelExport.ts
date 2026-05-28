@@ -38,7 +38,7 @@ export async function exportToExcel<T extends Record<string, unknown>>(
 
   // ─── Configuración de hoja ──────────────────────────────────────
   sheet.properties.defaultRowHeight = 22
-  sheet.properties.outlineProperties = { summaryBelow: false }
+  sheet.properties.outlineProperties = { summaryBelow: false, summaryRight: false }
 
   // ─── Definir estilos reutilizables ──────────────────────────────
   const titleFont: Partial<ExcelJS.Font> = {
@@ -137,7 +137,6 @@ export async function exportToExcel<T extends Record<string, unknown>>(
   // ─── 5. FILAS DE DATOS ───────────────────────────────────────
   const totalCols = columns.length
   const startDataRow = headerRow.number + 1
-  const endDataRow = headerRow.number + data.length
 
   data.forEach((row, rowIndex) => {
     const excelRow = sheet.addRow(
@@ -261,7 +260,7 @@ function reactNodeToExcelValue(node: React.ReactNode): string {
 
   // Para elementos React, extraemos el texto del children
   if (typeof node === 'object' && 'props' in node) {
-    const children = (node as React.ReactElement).props?.children
+    const children = (node as React.ReactElement<{ children?: React.ReactNode }>).props?.children
     if (children !== undefined && children !== null) {
       if (typeof children === 'string') return children
       if (typeof children === 'number') return String(children)

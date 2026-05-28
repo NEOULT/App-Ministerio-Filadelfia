@@ -1,5 +1,5 @@
 // src/components/Admin/Modals/ViewPersonModal.tsx
-import { type Persona } from '@/components/Admin/peopleTable/peopleTable'
+import { type Persona } from '@/components/Admin/peopleTable/types'
 import { formatearFecha, formatearGenero, formatearBautizado, formatearTelefono } from '@/components/Admin/peopleTable/utils/personUtils'
 import Modal from '@/components/ui/Modal/Modal'
 

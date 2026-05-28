@@ -1,6 +1,6 @@
 // src/components/Admin/Modals/RestorePersonModal.tsx
 import { useState } from 'react'
-import { type Persona } from '@/components/Admin/peopleTable/peopleTable'
+import { type Persona } from '@/components/Admin/peopleTable/types'
 import Modal from '@/components/ui/Modal/Modal'
 import { RotateCcw } from 'lucide-react'
 

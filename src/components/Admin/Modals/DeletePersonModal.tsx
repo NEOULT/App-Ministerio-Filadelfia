@@ -1,6 +1,6 @@
 // src/components/Admin/Modals/DeletePersonModal.tsx
 import { useState } from 'react'
-import { type Persona } from '@/components/Admin/peopleTable/peopleTable'
+import { type Persona } from '@/components/Admin/peopleTable/types'
 import Modal from '@/components/ui/Modal/Modal'
 import { AlertTriangle } from 'lucide-react'
 
