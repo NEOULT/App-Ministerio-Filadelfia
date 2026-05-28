@@ -897,4 +897,15 @@
     right: auto;
     transform: translateX(-50%);
   }
+
+  /* Export y sort dropdowns: evitar que se salgan de la pantalla en mobile */
+  .export-dropdown-menu,
+  .sort-dropdown-menu,
+  .filter-dropdown-menu {
+    max-width: calc(100vw - 24px);
+    min-width: 0;
+    width: auto;
+  }
+  
+
 }

@@ -3,6 +3,12 @@ import type { FiltersState } from './FilterDropdown'
 
 export type ColumnAlignment = 'left' | 'center' | 'right'
 
+/** Un campo adicional que existe en los datos pero no se muestra como columna en la tabla */
+export interface ExtraField {
+  key: string
+  label: string
+}
+
 export interface Column<T = Record<string, unknown>> {
   key: keyof T | string
   label: string
@@ -68,4 +74,7 @@ export interface PeopleTableProps<T extends Record<string, unknown>> {
   itemsPerPage?: number
   showActions?: boolean
   loading?: boolean
+  /** Campos adicionales que existen en los datos pero no son columnas visibles.
+   * Se mostrarán como opciones seleccionables al exportar a Excel. */
+  extraExportFields?: ExtraField[]
 }

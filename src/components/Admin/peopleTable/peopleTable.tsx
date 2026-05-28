@@ -16,25 +16,28 @@ import {
 import './PeopleTable.css'
 import FilterDropdown, { DEFAULT_FILTERS, type FiltersState } from './FilterDropdown'
 import ActionMenu from './components/ActionMenu'
+import ColumnSelectorModal from './components/ColumnSelectorModal'
 import { useClickOutside } from './hooks/useClickOutside'
 import { useFloatingMenu } from './hooks/useFloatingMenu'
 import { getRowSortValue, compareSortValues } from './utils/sortUtils'
 import { generateBirthdayHTML } from './utils/birthdayExport'
+import { exportToExcel } from './utils/excelExport'
 import { calcularEdad, getBirthMonthFromFechaNacimiento } from './utils/personUtils'
-import type { Column, SortDirection, SortMode, SortState, PeopleTableProps } from './types'
+import type { Column, SortDirection, SortMode, SortState, PeopleTableProps, ExtraField } from './types'
 
 // Re-export for consumers
-export type { Column, PeopleTableProps, ColumnAlignment } from './types'
+export type { Column, PeopleTableProps, ColumnAlignment, ExtraField } from './types'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const SORT_MENU_ESTIMATED_SIZE = { width: 240, height: 96 }
-const EXPORT_MENU_ESTIMATED_SIZE = { width: 220, height: 88 }
+const EXPORT_MENU_ESTIMATED_SIZE = { width: 220, height: 132 }
 
 // ─── PeopleTable component ────────────────────────────────────────────────────
 function PeopleTable<T extends Record<string, unknown>>({
   title,
   data,
   columns,
+  extraExportFields,
   onSearch,
   onFilter,
   onCreate,
@@ -68,6 +71,9 @@ function PeopleTable<T extends Record<string, unknown>>({
     gap: 8,
     alignRight: true,
   })
+
+  // Column selector modal
+  const [isColumnSelectorOpen, setIsColumnSelectorOpen] = useState(false)
 
   // Export menu refs & state
   const exportButtonRef = useRef<HTMLDivElement>(null)
@@ -257,6 +263,16 @@ function PeopleTable<T extends Record<string, unknown>>({
     setIsExportOpen(false)
   }
 
+  const handleOpenColumnSelector = () => {
+    setIsExportOpen(false)
+    setIsColumnSelectorOpen(true)
+  }
+
+  const handleExportExcel = async (selectedColumns: Column<Record<string, unknown>>[]) => {
+    await exportToExcel(sortedData as Record<string, unknown>[], selectedColumns, title)
+    setIsColumnSelectorOpen(false)
+  }
+
   const handleSortMenuToggle = () => {
     if (isSortMenuOpen) {
       setIsSortMenuOpen(false)
@@ -371,6 +387,14 @@ function PeopleTable<T extends Record<string, unknown>>({
                   >
                     <span className="export-dropdown-icon">🎂</span>
                     <span>Cumpleaños</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="export-dropdown-item"
+                    onClick={handleOpenColumnSelector}
+                  >
+                    <span className="export-dropdown-icon">📊</span>
+                    <span>Excel (.xlsx)</span>
                   </button>
                 </div>,
                 document.body
@@ -595,6 +619,14 @@ function PeopleTable<T extends Record<string, unknown>>({
           </div>
         </div>
       )}
+      {/* Column Selector Modal */}
+      <ColumnSelectorModal
+        isOpen={isColumnSelectorOpen}
+        onClose={() => setIsColumnSelectorOpen(false)}
+        columns={columns as Column<Record<string, unknown>>[]}
+        extraFields={extraExportFields as ExtraField[]}
+        onExport={handleExportExcel}
+      />
     </div>
   )
 }

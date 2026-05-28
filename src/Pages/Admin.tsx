@@ -1,6 +1,6 @@
 // src/Pages/Admin.tsx
 import { useEffect, useState } from 'react'
-import type { Persona } from '@/components/Admin/peopleTable/types'
+import type { Persona, ExtraField } from '@/components/Admin/peopleTable/types'
 import { usePersonas } from '@/hooks/usePersonas'
 import { useStatistics } from '@/hooks/useStatistics'
 import { getCurrentMonthRange } from '@/utils/dateUtils'
@@ -79,6 +79,14 @@ export default function Admin() {
   }
 
   const section = getSection()
+
+  // Campos adicionales que existen en los datos pero no se muestran en la tabla
+  const extraExportFields: ExtraField[] = [
+    { key: 'email', label: 'Email' },
+    { key: 'ministerio', label: 'Ministerio' },
+    { key: 'nivel_academico', label: 'Nivel Académico' },
+    { key: 'ocupacion', label: 'Ocupación' },
+  ]
 
   // Columnas para la tabla de jóvenes
   const personColumns: Column<Persona>[] = [
@@ -263,6 +271,7 @@ export default function Admin() {
             loadingEstadisticas={loadingEstadisticas}
             loadingPersonas={loadingPersonas}
             personColumns={personColumns}
+            extraExportFields={extraExportFields}
             onView={handleOnView}
             onEdit={handleEdit}
             onDelete={handleDelete}
