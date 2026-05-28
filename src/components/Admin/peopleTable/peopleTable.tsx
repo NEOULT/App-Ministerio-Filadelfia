@@ -13,7 +13,7 @@ import {
   ChevronDown,
   X,
 } from 'lucide-react'
-import './PeopleTable.css'
+import './peopleTable.css'
 import FilterDropdown, { DEFAULT_FILTERS, type FiltersState } from './FilterDropdown'
 import ActionMenu from './components/ActionMenu'
 import ColumnSelectorModal from './components/ColumnSelectorModal'
