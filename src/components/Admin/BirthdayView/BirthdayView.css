@@ -1,0 +1,45 @@
+/* src/components/Admin/BirthdayView/BirthdayView.css */
+
+/* Responsive: calendario debajo en tablet/mobile */
+@media (max-width: 900px) {
+  .birthday-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .birthday-grid > div:first-child {
+    border-right: none !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .birthday-grid > div:first-child {
+    padding: 20px 16px !important;
+  }
+  .birthday-grid > div:last-child {
+    padding: 20px 16px !important;
+  }
+}
+
+/* Ocultar scrollbar en los tabs de meses pero mantener scroll */
+.month-tabs-scroll {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.month-tabs-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* Transición suave al cambiar de mes */
+.birthday-content {
+  animation: birthdayFadeIn 0.25s ease-out;
+}
+
+@keyframes birthdayFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

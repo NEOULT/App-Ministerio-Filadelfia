@@ -73,7 +73,6 @@ export default function App() {
         minHeight: '100vh',
         width: '100%',
         backgroundColor: '#f3f4f6',
-        padding: '24px 16px',
         boxSizing: 'border-box',
         overflowX: 'hidden'
       }}>
