@@ -80,6 +80,7 @@ export interface CreatePersonaPayload {
 
 export interface UpdatePersonaPayload extends Partial<CreatePersonaPayload> {
   direccion?: string;
+  imagen_url?: string;
 }
 
 export interface CreateActividadPayload {

@@ -15,6 +15,37 @@ export default function ViewPersonModal({ isOpen, onClose, persona }: ViewPerson
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Detalles del Joven" size="md">
       <div className="view-person-content">
+        {/* Avatar / imagen */}
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <div
+            style={{
+              width: '88px',
+              height: '88px',
+              borderRadius: '50%',
+              backgroundColor: '#f3f4f6',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '2rem',
+              fontWeight: 600,
+              color: '#6b7280',
+              overflow: 'hidden',
+              border: '3px solid #e5e7eb',
+              flexShrink: 0,
+            }}
+          >
+            {persona.imagen_url ? (
+              <img
+                src={persona.imagen_url}
+                alt={persona.nombre}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            ) : (
+              (persona.nombre?.charAt(0) ?? '').toUpperCase()
+            )}
+          </div>
+        </div>
+
         <div className="info-group">
           <label>Nombre completo</label>
           <p>{persona.nombre + ' ' + persona.apellido}</p>

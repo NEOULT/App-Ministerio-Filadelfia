@@ -223,3 +223,9 @@ button {
 [data-slot="alert-dialog-overlay"] {
   background-color: rgba(0, 0, 0, 0.5) !important;
 }
+
+/* Animación para overlay del sidebar mobile */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

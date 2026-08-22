@@ -14,10 +14,11 @@ import {
 } from '@/components/Admin/peopleTable/utils/personUtils'
 import AdminLayout from '@/components/Admin/AdminLayout/AdminLayout'
 import AdminHeader from '@/components/Admin/AdminHeader/AdminHeader'
-import AdminTabs from '@/components/Admin/AdminTabs/AdminTabs'
+import AdminSidebar from '@/components/Admin/AdminSidebar/AdminSidebar'
 import DashboardView from '@/components/Admin/DashboardView/DashboardView'
 import JovenesView from '@/components/Admin/JovenesView/JovenesView'
 import ClasesView from '@/components/Admin/ClasesView/ClasesView'
+import BirthdayView from '@/components/Admin/BirthdayView/BirthdayView'
 import ViewPersonModal from '@/components/Admin/Modals/ViewPersonModal'
 import EditPersonModal from '@/components/Admin/Modals/EditPersonModal'
 import DeletePersonModal from '@/components/Admin/Modals/DeletePersonModal'
@@ -51,6 +52,7 @@ export default function Admin() {
   const personasHook = usePersonas(showDeletedOnly)
   const {
     personas,
+    allPersonas,
     loading: loadingPersonas,
     searchPersonas,
     refreshPersonas
@@ -73,6 +75,7 @@ export default function Admin() {
     const rest = hash.slice(SECRET_ADMIN_HASH.length) || ''
     const clean = rest.startsWith('/') ? rest.slice(1) : rest
     if (clean.startsWith('clases')) return 'clases'
+    if (clean.startsWith('cumpleanos')) return 'cumpleanos'
     if (clean.startsWith('jovenes') || clean.startsWith('personas')) return 'jovenes'
     if (clean === '' || clean === 'dashboard') return 'dashboard'
     return 'dashboard'
@@ -258,11 +261,23 @@ export default function Admin() {
     refreshEstadisticas()
   }
 
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
   return (
     <>
-      <AdminLayout>
-        <AdminHeader />
-        <AdminTabs currentSection={section} secretHash={SECRET_ADMIN_HASH} />
+      <AdminLayout
+        sidebar={
+          <AdminSidebar
+            currentSection={section}
+            secretHash={SECRET_ADMIN_HASH}
+            isOpen={sidebarOpen}
+            onToggle={() => setSidebarOpen((prev) => !prev)}
+          />
+        }
+      >
+        <div style={{ paddingTop: '8px' }}>
+          <AdminHeader onMenuToggle={() => setSidebarOpen((prev) => !prev)} />
+        </div>
         
         {section === 'dashboard' && (
           <DashboardView
@@ -285,6 +300,8 @@ export default function Admin() {
         )}
         
         {section === 'jovenes' && <JovenesView />}
+        
+        {section === 'cumpleanos' && <BirthdayView personas={allPersonas} />}
         
         {section === 'clases' && (
           <ClasesView 
