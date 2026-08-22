@@ -93,9 +93,38 @@ export default function Admin() {
 
   // Columnas para la tabla de jóvenes
   const personColumns: Column<Persona>[] = [
-    { 
-      key: 'nombreCompleto', 
-      label: 'Nombre y apellido', 
+    {
+      key: 'imagen_url',
+      label: 'Foto',
+      align: 'center',
+      render: (_, row) => (
+        <div style={{
+          width: '36px',
+          height: '36px',
+          borderRadius: '50%',
+          backgroundColor: row.imagen_url ? 'transparent' : '#f3f4f6',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          overflow: 'hidden',
+          border: row.imagen_url ? '2px solid #e5e7eb' : '2px dashed #d1d5db',
+          margin: '0 auto',
+        }}>
+          {row.imagen_url ? (
+            <img
+              src={row.imagen_url}
+              alt=""
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+          ) : (
+            <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>📷</span>
+          )}
+        </div>
+      )
+    },
+    {
+      key: 'nombreCompleto',
+      label: 'Nombre y apellido',
       align: 'left',
       render: (_, row) => getNombreCompleto(row)
     },
