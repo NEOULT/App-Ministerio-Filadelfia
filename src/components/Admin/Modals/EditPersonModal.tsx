@@ -35,10 +35,20 @@ export default function EditPersonModal({ isOpen, onClose, persona, onSave }: Ed
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [dragActive, setDragActive] = useState(false)
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const [initialFormData, setInitialFormData] = useState<Partial<Persona>>({})
+  const [initialImageUrl, setInitialImageUrl] = useState('')
+
+  // Detectar si hay cambios sin guardar
+  const isDirty = (() => {
+    const formChanged = JSON.stringify(formData) !== JSON.stringify(initialFormData)
+    const imageChanged = imageUrl !== initialImageUrl
+    return formChanged || imageChanged
+  })()
 
   useEffect(() => {
     if (persona) {
-      setFormData({
+      const initial = {
         nombre: persona.nombre,
         apellido: persona.apellido,
         cedula: persona.cedula,
@@ -51,8 +61,12 @@ export default function EditPersonModal({ isOpen, onClose, persona, onSave }: Ed
         nivel_academico: persona.nivel_academico || '',
         ocupacion: persona.ocupacion || '',
         direccion: persona.direccion || ''
-      })
-      setImageUrl(persona.imagen_url || '')
+      }
+      setFormData(initial)
+      setInitialFormData(initial)
+      const img = persona.imagen_url || ''
+      setImageUrl(img)
+      setInitialImageUrl(img)
     }
   }, [persona])
 
@@ -132,10 +146,24 @@ export default function EditPersonModal({ isOpen, onClose, persona, onSave }: Ed
     setDragActive(false)
   }, [])
 
+  const handleClose = useCallback(() => {
+    if (isDirty) {
+      setShowConfirmModal(true)
+    } else {
+      onClose()
+    }
+  }, [isDirty, onClose])
+
+  const handleConfirmClose = useCallback(() => {
+    setShowConfirmModal(false)
+    onClose()
+  }, [onClose])
+
   if (!persona) return null
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Editar Joven" size="lg">
+    <>
+    <Modal isOpen={isOpen} onClose={handleClose} title="Editar Joven" size="lg">
       <div className="edit-person-form">
         {error && (
           <div className="form-error" ref={errorRef}>
@@ -431,9 +459,18 @@ export default function EditPersonModal({ isOpen, onClose, persona, onSave }: Ed
           display: flex;
           justify-content: flex-end;
           gap: 12px;
-          padding-top: 16px;
+          padding: 16px 0 0 0;
           margin-top: 8px;
           border-top: 1px solid #e5e7eb;
+          position: sticky;
+          bottom: -24px;
+          background: white;
+          z-index: 5;
+          margin-left: -24px;
+          margin-right: -24px;
+          padding-left: 24px;
+          padding-right: 24px;
+          padding-bottom: 24px;
         }
         @media (max-width: 480px) {
           .modal-actions {
@@ -475,5 +512,91 @@ export default function EditPersonModal({ isOpen, onClose, persona, onSave }: Ed
         }
       `}</style>
     </Modal>
+
+    {/* Modal de confirmación para salir sin guardar */}
+    {showConfirmModal && (
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1100,
+          padding: '16px',
+        }}
+        onClick={() => setShowConfirmModal(false)}
+      >
+        <div
+          style={{
+            backgroundColor: 'white',
+            borderRadius: '16px',
+            padding: '28px',
+            maxWidth: '400px',
+            width: '100%',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+            animation: 'modalFadeScale 220ms cubic-bezier(0.16, 1, 0.3, 1) forwards',
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{
+                width: '44px',
+                height: '44px',
+                borderRadius: '50%',
+                backgroundColor: '#fef3c7',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}>
+                <AlertCircle size={24} style={{ color: '#d97706' }} />
+              </div>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, color: '#111827' }}>
+                ¿Salir sin guardar?
+              </h3>
+            </div>
+            <p style={{ margin: 0, fontSize: '0.9rem', color: '#6b7280', lineHeight: 1.5 }}>
+              Tienes cambios sin guardar. Si sales ahora, se perderán todos los cambios realizados.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '4px' }}>
+              <button
+                onClick={() => setShowConfirmModal(false)}
+                style={{
+                  padding: '10px 20px',
+                  background: '#f3f4f6',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  fontSize: '0.875rem',
+                  cursor: 'pointer',
+                  color: '#374151',
+                  fontWeight: 500,
+                }}
+              >
+                Seguir editando
+              </button>
+              <button
+                onClick={handleConfirmClose}
+                style={{
+                  padding: '10px 20px',
+                  background: '#dc2626',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '0.875rem',
+                  cursor: 'pointer',
+                  color: 'white',
+                  fontWeight: 500,
+                }}
+              >
+                Salir sin guardar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   )
 }

@@ -938,15 +938,13 @@ function BirthdayPersonModal({
   const monthName = MONTH_NAMES[Number.parseInt(month, 10) - 1] ?? ''
   const faltas = (item.persona as Record<string, unknown>).faltas as number | undefined
   const imageUrl = item.persona.imagen_url || ''
-
-  const whatsappMessage = encodeURIComponent(
-    `🎂 ¡Feliz cumpleaños ${name.split(' ')[0]}! 🎉\n\n` +
+  const defaultMessage = `🎂 ¡Feliz cumpleaños ${name.split(' ')[0]}! 🎉\n\n` +
     `Que este nuevo año venga lleno de bendiciones, salud y mucho éxito. 🙏✨\n\n` +
     `¡Te deseamos lo mejor en este día tan especial! 🎁🎈\n\n` +
     `— Con cariño, el equipo ✨` +
     (imageUrl ? `\n\n${imageUrl}` : '')
-  )
-  const whatsappUrl = `https://wa.me/?text=${whatsappMessage}`
+  const [whatsappText, setWhatsappText] = useState(defaultMessage)
+  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(whatsappText)}`
 
   return (
     <Modal
@@ -1022,6 +1020,32 @@ function BirthdayPersonModal({
 
         {/* Separator */}
         <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', margin: 0 }} />
+
+        {/* Mensaje editable */}
+        <div>
+          <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px', display: 'block' }}>
+            Mensaje a enviar
+          </label>
+          <textarea
+            value={whatsappText}
+            onChange={(e) => setWhatsappText(e.target.value)}
+            rows={5}
+            style={{
+              width: '100%',
+              padding: '12px',
+              borderRadius: '10px',
+              border: '1px solid #e5e7eb',
+              fontSize: '0.85rem',
+              color: '#111827',
+              resize: 'vertical',
+              fontFamily: 'inherit',
+              lineHeight: 1.5,
+              transition: 'border-color 0.15s',
+            }}
+            onFocus={(e) => { e.currentTarget.style.borderColor = '#6366f1' }}
+            onBlur={(e) => { e.currentTarget.style.borderColor = '#e5e7eb' }}
+          />
+        </div>
 
         {/* Botones de acción */}
         <div style={{ display: 'flex', gap: '12px' }}>
