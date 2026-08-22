@@ -28,6 +28,16 @@
   display: none;
 }
 
+/* Scroll vertical oculto en la columna de contenido */
+.birthday-scroll {
+  overflow-y: auto;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.birthday-scroll::-webkit-scrollbar {
+  display: none;
+}
+
 /* Transición suave al cambiar de mes */
 .birthday-content {
   animation: birthdayFadeIn 0.25s ease-out;
@@ -41,5 +51,14 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
   }
 }

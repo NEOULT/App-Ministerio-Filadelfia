@@ -52,6 +52,7 @@ export default function Admin() {
   const personasHook = usePersonas(showDeletedOnly)
   const {
     personas,
+    allPersonas,
     loading: loadingPersonas,
     searchPersonas,
     refreshPersonas
@@ -300,7 +301,7 @@ export default function Admin() {
         
         {section === 'jovenes' && <JovenesView />}
         
-        {section === 'cumpleanos' && <BirthdayView personas={personas} />}
+        {section === 'cumpleanos' && <BirthdayView personas={allPersonas} />}
         
         {section === 'clases' && (
           <ClasesView 

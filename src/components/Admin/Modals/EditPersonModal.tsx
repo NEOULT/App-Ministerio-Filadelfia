@@ -1,6 +1,6 @@
 // src/components/Admin/Modals/EditPersonModal.tsx
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { AlertCircle } from 'lucide-react'
+import { AlertCircle, Upload, Loader2 } from 'lucide-react'
 import { type Persona } from '@/components/Admin/peopleTable/peopleTable'
 import Modal from '@/components/ui/Modal/Modal'
 
@@ -30,6 +30,11 @@ export default function EditPersonModal({ isOpen, onClose, persona, onSave }: Ed
   const [error, setError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const errorRef = useRef<HTMLDivElement | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [imageUrl, setImageUrl] = useState(persona?.imagen_url || '')
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const [dragActive, setDragActive] = useState(false)
 
   useEffect(() => {
     if (persona) {
@@ -47,6 +52,7 @@ export default function EditPersonModal({ isOpen, onClose, persona, onSave }: Ed
         ocupacion: persona.ocupacion || '',
         direccion: persona.direccion || ''
       })
+      setImageUrl(persona.imagen_url || '')
     }
   }, [persona])
 
@@ -92,6 +98,40 @@ export default function EditPersonModal({ isOpen, onClose, persona, onSave }: Ed
     }
   }
 
+  const handleFileSelect = useCallback(async (file: File) => {
+    setUploadError(null)
+    setUploading(true)
+
+    try {
+      const { uploadImage } = await import('@/utils/imageUpload')
+      const result = await uploadImage(file)
+      setImageUrl(result.url)
+      setFormData(prev => ({ ...prev, imagen_url: result.url }))
+    } catch (error: unknown) {
+      const err = error as { message?: string }
+      setUploadError(err.message || 'Error al subir la imagen')
+    } finally {
+      setUploading(false)
+    }
+  }, [])
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    setDragActive(false)
+    const file = e.dataTransfer.files[0]
+    if (file) handleFileSelect(file)
+  }, [handleFileSelect])
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    setDragActive(true)
+  }, [])
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    setDragActive(false)
+  }, [])
+
   if (!persona) return null
 
   return (
@@ -103,6 +143,83 @@ export default function EditPersonModal({ isOpen, onClose, persona, onSave }: Ed
             <span>{error}</span>
           </div>
         )}
+
+        {/* Zona de subir imagen */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <div
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onClick={() => !uploading && fileInputRef.current?.click()}
+            style={{
+              border: `2px dashed ${dragActive ? '#6366f1' : '#e5e7eb'}`,
+              borderRadius: '16px',
+              padding: imageUrl ? '12px' : '28px 32px',
+              textAlign: 'center',
+              cursor: uploading ? 'default' : 'pointer',
+              backgroundColor: dragActive ? '#f5f3ff' : '#fafafa',
+              transition: 'all 0.15s',
+              width: imageUrl ? 'auto' : '100%',
+            }}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) handleFileSelect(file)
+                e.target.value = ''
+              }}
+            />
+
+            {uploading ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '12px 0' }}>
+                <Loader2 size={20} style={{ color: '#6366f1', animation: 'spin 1s linear infinite' }} />
+                <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>Subiendo imagen...</span>
+              </div>
+            ) : imageUrl ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                <img
+                  src={imageUrl}
+                  alt="Preview"
+                  style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #e5e7eb' }}
+                />
+                <div>
+                  <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#111827' }}>Imagen actual</div>
+                  <div style={{ fontSize: '0.7rem', color: '#6b7280' }}>Haz clic para cambiar</div>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                <div
+                  style={{
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '50%',
+                    backgroundColor: '#f3f4f6',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Upload size={20} style={{ color: '#9ca3af' }} />
+                </div>
+                <div>
+                  <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>Arrastra la foto aquí o </span>
+                  <span style={{ fontSize: '0.85rem', color: '#6366f1', fontWeight: 600 }}>haz clic</span>
+                </div>
+                <div style={{ fontSize: '0.7rem', color: '#9ca3af' }}>JPG, PNG o WebP • Máx 5MB</div>
+              </div>
+            )}
+          </div>
+          {uploadError && (
+            <div style={{ marginTop: '8px', padding: '8px 12px', borderRadius: '8px', backgroundColor: '#fef2f2', fontSize: '0.8rem', color: '#dc2626' }}>
+              {uploadError}
+            </div>
+          )}
+        </div>
 
         <div className="form-row">
           <div className="form-group">

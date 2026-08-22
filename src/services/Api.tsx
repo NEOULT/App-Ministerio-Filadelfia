@@ -80,6 +80,7 @@ export interface CreatePersonaPayload {
 
 export interface UpdatePersonaPayload extends Partial<CreatePersonaPayload> {
   direccion?: string;
+  imagen_url?: string;
 }
 
 export interface CreateActividadPayload {
@@ -112,7 +113,7 @@ interface ApiEnvelope<T = unknown> {
   [key: string]: unknown;
 }
 
-const API_BASE = "http://localhost:3000";
+const API_BASE = "https://backend01-proyecto-jovenes-phru.vercel.app";
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
